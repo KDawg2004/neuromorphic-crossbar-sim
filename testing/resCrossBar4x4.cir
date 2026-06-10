@@ -1,0 +1,45 @@
+* 4x4 Resistive Crossbar 
+* Row voltages are inputs, column currents are outputs
+*M = 
+*1  2  3  4
+*2  3  4  1
+*3  4  1  2
+*4  1  2  3
+
+* Input voltage sources (rows)
+V1 row1 0 DC 1V
+V2 row2 0 DC 2V
+V3 row3 0 DC 3V
+V4 row4 0 DC 4V
+
+* Crossbar resistors (row, col intersections)
+*the conductance (G = 1/R) at each intersection.
+*but I scaled up by 10k to keep resistances reasonable
+*therefor R = 10k/M
+R11 row1 col1 10k
+R12 row1 col2 5k
+R13 row1 col3 {10000/3}
+R14 row1 col4 2.5k
+R21 row2 col1 5k
+R22 row2 col2 {10000/3}
+R23 row2 col3 2.5k
+R24 row2 col4 10k
+R31 row3 col1 {10000/3}
+R32 row3 col2 2.5k
+R33 row3 col3 10k
+R34 row3 col4 5k
+R41 row4 col1 2.5k
+R42 row4 col2 10k
+R43 row4 col3 5k
+R44 row4 col4 {10000/3}
+
+* Column nodes need to be grounded to measure current
+Vout1 col1 0 DC 0V
+Vout2 col2 0 DC 0V
+Vout3 col3 0 DC 0V
+Vout4 col4 0 DC 0V
+
+* Measure current through the grounding sources
+.PRINT DC I(Vout1) I(Vout2) I(Vout3) I(Vout4)
+.DC V1 1 1 1
+.END

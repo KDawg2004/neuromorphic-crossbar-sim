@@ -1,0 +1,11 @@
+*Author: Kaevin
+*date: 6
+*Test program
+
+V1 node1 0 DC 5
+R1 node1 0 1k
+
+.OP
+.PRINT DC V(node1)
+
+.END
