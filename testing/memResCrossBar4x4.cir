@@ -1,0 +1,35 @@
+* 4x4 Memristive Crossbar
+
+.MODEL mrm memristor level=3 a1=0.17 a2=0.17 b=0.05 vp=0.16 vn=0.15
++ ap=4000 an=4000 xp=0.3 xn=0.5 alphap=1 alphan=5 eta=1
+
+V1 row1 0 SIN(0 1.2 1k)
+V2 row2 0 SIN(0 1.0 1k 0 0 0 0)
+V3 row3 0 SIN(0 0.8 1k 0 0 0 0)
+V4 row4 0 SIN(0 0.6 1k 0 0 0 0)
+
+ymemristor m11 row1 col1 mrm
+ymemristor m12 row1 col2 mrm
+ymemristor m13 row1 col3 mrm
+ymemristor m14 row1 col4 mrm
+ymemristor m21 row2 col1 mrm
+ymemristor m22 row2 col2 mrm
+ymemristor m23 row2 col3 mrm
+ymemristor m24 row2 col4 mrm
+ymemristor m31 row3 col1 mrm
+ymemristor m32 row3 col2 mrm
+ymemristor m33 row3 col3 mrm
+ymemristor m34 row3 col4 mrm
+ymemristor m41 row4 col1 mrm
+ymemristor m42 row4 col2 mrm
+ymemristor m43 row4 col3 mrm
+ymemristor m44 row4 col4 mrm
+
+Vout1 col1 0 DC 0V
+Vout2 col2 0 DC 0V
+Vout3 col3 0 DC 0V
+Vout4 col4 0 DC 0V
+
+.TRAN 10u 10m
+.PRINT TRAN I(Vout1) I(Vout2) I(Vout3) I(Vout4) I(V1) I(V2) I(V3) I(V4)
+.END

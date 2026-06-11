@@ -1,0 +1,13 @@
+V1 in 0 DC 1
+R1 in 0 1k
+
+Vsense in n1 0
+R2 n1 0 1k
+
+Gtest 0 x VALUE={I(Vsense)}
+Cx x 0 1
+
+.TRAN 1u 10u
+.PRINT TRAN V(x)
+
+.END
