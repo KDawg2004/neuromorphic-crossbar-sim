@@ -1,12 +1,23 @@
-* Single Memristor Test - Native Xyce Device
+* HP Biolek Memristor Test
+
+.SUBCKT memristor plus minus PARAMS:
++ Ron=100 Roff=16K Rinit=11K D=10N uv=10F p=1
+
+Gx 0 x value={I(Emem)*uv*Ron/D**2*f(V(x),p)}
+Cx x 0 1 IC={(Roff-Rinit)/(Roff-Ron)}
+Raux x 0 1000000
+
+Emem plus aux value={-I(Emem)*V(x)*(Roff-Ron)}
+Roff aux minus {Roff}
+
+Eflux flux 0 value={SDT(V(plus,minus))}
+Echarge charge 0 value={SDT(I(Emem))}
+
+.func f(x,p)={1-(2*x-1)**(2*p)}
+.ENDS memristor
+
 V1 1 0 SIN(0V 1.2V 1Hz)
-
-ymemristor mr1 1 0 mrm1
-
-.MODEL mrm1 memristor level=3 a1=0.17 a2=0.17 b=0.05 vp=0.16 vn=0.15
-+ ap=4000 an=4000 xp=0.3 xn=0.5 alphap=1 alphan=5 eta=1
-
+Xmem 1 0 memristor
 .TRAN 1ms 1s
 .PRINT TRAN V(1) I(V1)
-
 .END

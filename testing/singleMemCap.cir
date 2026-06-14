@@ -1,0 +1,60 @@
+* Biolek Charge-Controlled Memcapacitor
+* Based on Biolek et al., Electronics Letters 2010
+
+.SUBCKT memcapacitor Plus Minus PARAMS: Cmin=50n Cmax=200n Cinit=100n k=10meg p=10
+
+* Current sensing source
+Vsense Plus nport 0
+
+* DC path
+Rbleed Plus Minus 1G
+
+* Initial state
+.func Xlimited(v)={IF(v<0,0,IF(v>1,1,v))}
+.func window(v,p)={1-(2*Xlimited(v)-1)**(2*p)}
+
+* Inverse memcapacitance
+.func DM(v)={1/Cmax+(1/Cmin-1/Cmax)*Xlimited(v)}
+
+* x0 from paper
+
+
+************************************************
+* Charge integrator
+* q(t) = integral(i dt)
+************************************************
+Gq 0 q VALUE={I(Vsense)}
+Cq q 0 1 IC=0
+Rq q 0 1G
+
+************************************************
+* State integrator
+* dx/dt = k*q*window(x)
+************************************************
+Gx 0 x VALUE={k*V(q)*window(V(x),p)}
+Cx x 0 1 IC={(1/Cinit-1/Cmax)/(1/Cmin-1/Cmax)}
+Rx x 0 1G
+
+************************************************
+* Port equation
+* v = DM(x)*q
+************************************************
+Ecap nport Minus VALUE={DM(V(x))*V(q)}
+
+.ENDS memcapacitor
+
+
+************************************************
+* TEST CIRCUIT
+************************************************
+
+* Bipolar pulse similar to Biolek paper
+Vin input 0 PULSE(-1 1 10m 10m 10m 900m 1800m)
+
+Xcap input 0 memcapacitor
+
+.TRAN 1m 5 UIC
+
+.PRINT TRAN V(input) V(Xcap:x) V(Xcap:q)
+
+.END
