@@ -49,7 +49,10 @@ Ecap nport Minus VALUE={DM(V(x))*V(q)}
 ************************************************
 
 * Bipolar pulse similar to Biolek paper
-Vin input 0 PULSE(-1 1 10m 10m 10m 900m 1800m)
+*Vin input 0 SIN(0 1 0.1)
+Vin input 0 SIN(0 1 1)
+*Vin input 0 SIN(0 1 10)
+*Vin input 0 SIN(0 1 100)
 
 Xcap input 0 memcapacitor
 

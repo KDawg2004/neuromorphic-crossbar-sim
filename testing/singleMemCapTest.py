@@ -9,13 +9,13 @@ data = np.genfromtxt(
 
 data = data[~np.isnan(data).any(axis=1)]
 
-voltage = data[:,2]
-q = data[:,4]
+time = data[:,1]
+x = data[:,3]
 
-plt.figure(figsize=(7,5))
-plt.plot(q, voltage)
-plt.xlabel('Charge (C)')
-plt.ylabel('Voltage (V)')
-plt.title('Biolek Volt-Coulomb Hysteresis')
+plt.figure(figsize=(8,5))
+plt.plot(time, x)
+plt.xlabel('Time (s)')
+plt.ylabel('State x')
+plt.title('Memcapacitor State Variable')
 plt.grid(True)
 plt.show()

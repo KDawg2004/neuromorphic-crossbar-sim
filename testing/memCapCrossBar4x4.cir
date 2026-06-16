@@ -1,0 +1,114 @@
+*Kaevin Barta
+*=========================================================
+* 4x4 Biolek Memcapacitive Crossbar
+*=========================================================
+
+.SUBCKT memcapacitor Plus Minus PARAMS: Cmin=50n Cmax=200n Cinit=100n k=10meg p=10
+
+*current meter
+Vsense Plus nport 0
+
+*leak resistor
+Rbleed Plus Minus 1G
+
+*dont let x go below 0 or over 1 
+*hard clamp
+.func Xlimited(v)={IF(v<0,0,IF(v>1,1,v))}
+
+*------- Joglekar window function ---------
+* Equation = 1 - (2x - 1)^2p
+* 2p (def of even) keeps number postive 
+* x = .5 => top speed 
+* x near 0 or 1 => slow down
+*soft clamp    
+.func window(v,p)={1-(2*Xlimited(v)-1)**(2*p)}
+.func DM(v)={1/Cmax+(1/Cmin-1/Cmax)*Xlimited(v)}
+
+* -------- find the charge through the crossbar -------------
+* node "q" voltage value is q(t)
+Gq 0 q VALUE={I(Vsense)}
+Cq q 0 1 IC=0
+*Dont leave q floating 
+Rq q 0 1G
+
+* -------- Memory state x(t) ------------
+* controls capacitince 
+* injects current into node x that is proportinal to:
+* scaling factor k, V(q) the charge, and Window(V(x), p) slow near 1 & 0
+Gx 0 x VALUE={k*V(q)*window(V(x),p)}
+Cx x 0 1 IC={(1/Cinit-1/Cmax)/(1/Cmin-1/Cmax)}
+*Dont leave x floating 
+Rx x 0 1G
+
+* ---- Memcapacitor constitutive relation ----
+*Port equation [2] in MEMCAPACITOR MODELING IN MICRO-CAP: 
+Ecap nport Minus VALUE={DM(V(x))*V(q)}
+
+.ENDS memcapacitor
+
+*=========================================================
+* INPUTS
+*=========================================================
+
+V1 row1 0 SIN(0 1.0 1)
+V2 row2 0 SIN(0 0.5 1)
+V3 row3 0 0
+V4 row4 0 0
+
+*=========================================================
+* 4x4 WEIGHT MATRIX
+*
+* 1 2 3 4
+* 2 3 4 1
+* 3 4 1 2
+* 4 1 2 3
+*
+* 1 -> 50n
+* 2 -> 83n
+* 3 -> 117n
+* 4 -> 150n
+*=========================================================
+
+Xm11 row1 col1 memcapacitor PARAMS: Cinit=50n
+Xm12 row1 col2 memcapacitor PARAMS: Cinit=83n
+Xm13 row1 col3 memcapacitor PARAMS: Cinit=117n
+Xm14 row1 col4 memcapacitor PARAMS: Cinit=150n
+
+Xm21 row2 col1 memcapacitor PARAMS: Cinit=83n
+Xm22 row2 col2 memcapacitor PARAMS: Cinit=117n
+Xm23 row2 col3 memcapacitor PARAMS: Cinit=150n
+Xm24 row2 col4 memcapacitor PARAMS: Cinit=50n
+
+Xm31 row3 col1 memcapacitor PARAMS: Cinit=117n
+Xm32 row3 col2 memcapacitor PARAMS: Cinit=150n
+Xm33 row3 col3 memcapacitor PARAMS: Cinit=50n
+Xm34 row3 col4 memcapacitor PARAMS: Cinit=83n
+
+Xm41 row4 col1 memcapacitor PARAMS: Cinit=150n
+Xm42 row4 col2 memcapacitor PARAMS: Cinit=50n
+Xm43 row4 col3 memcapacitor PARAMS: Cinit=83n
+Xm44 row4 col4 memcapacitor PARAMS: Cinit=117n
+
+*=========================================================
+* COLUMN CURRENT SENSING
+*=========================================================
+
+Vs1 col1 sense1 0
+Vs2 col2 sense2 0
+Vs3 col3 sense3 0
+Vs4 col4 sense4 0
+
+Rout1 sense1 0 1G
+Rout2 sense2 0 1G
+Rout3 sense3 0 1G
+Rout4 sense4 0 1G
+
+*=========================================================
+* ANALYSIS
+*=========================================================
+
+.TRAN 10m 5 UIC
+
+.PRINT TRAN V(col1) V(col2) V(col3) V(col4) I(Vs1) I(Vs2) I(Vs3) I(Vs4)
+
+.END
