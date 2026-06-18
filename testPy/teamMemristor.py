@@ -102,7 +102,7 @@ def dw_dt(w, i, p):
 # Simulation
 # ============================================================
 
-def simulate(freq=1, V_amp=2.0, cycles=3):
+def simulate(freq=1, V_amp= 1.5, cycles=3):
 
     p = PARAMS
 
@@ -140,6 +140,17 @@ def simulate(freq=1, V_amp=2.0, cycles=3):
 
     t = sol.t
 
+    raw_w = sol.y[0]
+
+    eps = 1e-6
+
+    if np.any(raw_w < -eps) or np.any(raw_w > 1 + eps):
+        print(
+            f"WARNING: solver left physical bounds! "
+            f"min={raw_w.min():.12f}, "
+            f"max={raw_w.max():.12f}"
+            )
+
     w = np.clip(sol.y[0], 0, 1)
 
     v = voltage(t)
@@ -155,7 +166,6 @@ def simulate(freq=1, V_amp=2.0, cycles=3):
         dw_values.append(dw_dt(wi, ii, PARAMS))
 
     print("max |dw/dt| =", np.max(np.abs(dw_values)))
-
 
     return t, w, v, i
 
