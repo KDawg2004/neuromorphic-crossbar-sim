@@ -1,8 +1,13 @@
 import numpy as np
 from scipy.integrate import solve_ivp
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 # TEAM (Threshold Adaptive Memristor) model as a reusable class
 class TEAMMemristor:
+
 
     def __init__(
         self,
@@ -28,9 +33,11 @@ class TEAMMemristor:
         self.w_init = w_init
         self.p = p
 
+
     def set_state(self, w):
         # Update initial condition for next simulation
         self.w_init = np.clip(w, 0, 1)
+
 
     def window(self, w, i):
         # Nonlinear window function: reduces switching rate near the boundaries
@@ -40,10 +47,12 @@ class TEAMMemristor:
         else:
             return 1 - (1-w)**(2*self.p)  # switching on: slower near w=0
 
+
     def conductance(self, w):
         # Linear interpolation between off and on conductance based on state w
         w = np.clip(w, 0.0, 1.0)
         return self.G_off + w*(self.G_on - self.G_off)
+
 
     def dw_dt(self, w, i):
         # TEAM state dynamics: dw/dt depends on current magnitude and direction
@@ -71,6 +80,8 @@ class TEAMMemristor:
             dw = 0
         
         return dw
+    
+
 
     def simulate(self,
                  freq=1,          # excitation frequency (Hz)
@@ -121,7 +132,12 @@ class TEAMMemristor:
         G = self.conductance(w)
         i = G*v  # current throughout simulation
         
-        return t, w, v, i
+        # Compute charge via trapezoidal integration of current
+        q = np.cumsum(0.5 * (i[1:] + i[:-1]) * np.diff(t))
+        q = np.insert(q, 0, 0)
+        
+        return t, w, v, i, q
+
 
     def resistance(self, w):
         # Compute resistance as reciprocal of conductance
@@ -130,3 +146,75 @@ class TEAMMemristor:
     def reset(self):
         # Reset state to default initial condition
         self.w_init = 0.5
+
+
+    def plot(self, t_end=2.0, freq=1.0, amp=1.5):
+        # Plot TEAM memristor behavior with Q-V verification
+        cycles = int(t_end * freq)
+        t, w, v, i, q = self.simulate(freq=freq, V_amp=amp, cycles=cycles)
+
+
+        fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+        fig.suptitle('TEAM Memristor Q-V Verification', fontsize=14)
+
+
+        # v(t) and i(t)
+        axes[0, 0].plot(t, v, label='v(t)')
+        axes[0, 0].plot(t, i*1e3, label='i(t) (mA)')
+        axes[0, 0].set_xlabel('Time (s)')
+        axes[0, 0].set_ylabel('Voltage / Current')
+        axes[0, 0].legend()
+        axes[0, 0].grid(True)
+
+
+        # I-V loop
+        axes[0, 1].plot(v, i, label='I-V loop')
+        axes[0, 1].set_xlabel('Voltage (V)')
+        axes[0, 1].set_ylabel('Current (A)')
+        axes[0, 1].grid(True)
+
+
+        # Q-V loop (main verification plot)
+        axes[1, 0].plot(v, q, label='Q-V loop', color='red')
+        axes[1, 0].set_xlabel('Voltage (V)')
+        axes[1, 0].set_ylabel('Charge (C)')
+        axes[1, 0].grid(True)
+
+
+        # w(t)
+        axes[1, 1].plot(t, w, label='w(t)')
+        axes[1, 1].set_xlabel('Time (s)')
+        axes[1, 1].set_ylabel('State w')
+        axes[1, 1].set_ylim(-0.05, 1.05)
+        axes[1, 1].grid(True)
+
+
+        plt.tight_layout()
+        plt.savefig('team_qv.png', dpi=150, bbox_inches='tight')
+        plt.close()
+
+
+        return t, q, w, v, i
+
+
+if __name__ == "__main__":
+    m = TEAMMemristor()
+    print(f"w_init = {m.w_init:.4f}")
+    print(f"G at w_init = {m.conductance(m.w_init)*1e3:.2f} mS")
+    print(f"R at w_init = {m.resistance(m.w_init)/1e3:.2f} kOhm (should be ~5.5 kOhm)")
+
+
+    t, q, w, v, i = m.plot(t_end=3.0, freq=0.5, amp=2.0)
+
+
+    print(f"\nw_init final = {m.w_init}")
+    print(f"R at w_init = {m.resistance(m.w_init):.0f} Ohm")
+    print(f"\nw range: [{w.min():.4f}, {w.max():.4f}]")
+    print(f"q range: [{q.min()*1e3:.4f}, {q.max()*1e3:.4f}] mC")
+    print(f"v range: [{v.min():.4f}, {v.max():.4f}] V")
+    print(f"G range: [{m.conductance(w.max())*1e3:.2f}, {m.conductance(w.min())*1e3:.2f}] mS")
+
+
+    for target in [0.5, 1.0, 1.5, 2.0]:
+        idx = np.argmin(np.abs(t - target))
+        print(f"t={target:1.1f}s -> t={t[idx]:.4f}s, w={w[idx]:.4f}, q={q[idx]*1e3:.6f} mC, v={v[idx]:.4f} V")
