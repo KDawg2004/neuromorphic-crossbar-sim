@@ -7,6 +7,7 @@ The project began as a direct translation of the original SPICE model into Pytho
 ## Features
 
 * Biolek charge controlled memcapacitor model
+* Adams-Bashforth-Moulton predictor-corrector method for the Caputo fractional derivative
 * Integer-order and fractional-order state dynamics
 * Caputo fractional derivative implementation
 * Charge-driven excitation with bipolar reference signals

@@ -40,7 +40,7 @@ def figure8_area(v, q):
 
 def validate_alpha_sweep(model):
 
-    alphas = [1.0, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
+    alphas = [1.2, 1.0, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
 
     loop_areas = []
 
