@@ -98,7 +98,7 @@ def validate_alpha_one(model):
 
     t, q, x, v, i = model.simulate(
         t_end=5.0,
-        freq=3.0,
+        freq=1.0,
         Q_amp=100e-9,
         alpha=1.0
     )
