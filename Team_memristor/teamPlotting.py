@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot(model, t_end=2.0, freq=1.0, amp=1.5):
+def plot(model, t_end=2.0, freq=1.0, amp=1.5, voltage_fn=None):
     """
     Plot TEAM memristor behavior.
 
@@ -18,7 +18,13 @@ def plot(model, t_end=2.0, freq=1.0, amp=1.5):
     t, w, v, i, q  -- same order as simulate()
     """
     cycles = max(1, int(t_end * freq))
-    t, w, v, i, q = model.simulate(freq=freq, V_amp=amp, cycles=cycles)
+
+    t, w, v, i, q = model.simulate(
+        freq=freq,
+        V_amp=amp,
+        cycles=cycles,
+        voltage_fn=voltage_fn
+    )
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
     fig.suptitle('TEAM Memristor', fontsize=14)

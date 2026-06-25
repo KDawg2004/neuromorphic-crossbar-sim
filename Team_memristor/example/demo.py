@@ -1,21 +1,39 @@
 import numpy as np
-
 from .. import TEAMMemristor, plot
 
 
-if __name__ == "__main__":
-    m = TEAMMemristor()
-    print(f"w_init = {m.w_init:.4f}")
-    print(f"G at w_init = {m.conductance(m.w_init)*1e3:.2f} mS")
-    print(f"R at w_init = {m.resistance(m.w_init)/1e3:.2f} kOhm (should be ~5.5 kOhm)")
+m = TEAMMemristor(
+    k_off=1.333,
+    k_on=-1.333,
+    alpha_off=2,
+    alpha_on=2,
+    i_off=0.5e-3,
+    i_on=-0.5e-3,
+    G_on=1/500,
+    G_off=1/5000,
+    w_init=0.5,
+)
 
-    t, w, v, i, q = plot(m, t_end=3.0, freq=0.5, amp=2.0)
+# Peak current at this amplitude = G_on * V_amp = (1/500) * 0.1 = 0.2mA
+# i_off = 0.5mA, so we never exceed threshold -> no switching -> straight line
+t, w, v, i, q = plot(m, t_end=3.0, freq=1.0, amp=0.1)
+print(f"w range: [{w.min():.6f}, {w.max():.6f}]")  # should be essentially flat
 
-    print(f"\nw range: [{w.min():.4f}, {w.max():.4f}]")
-    print(f"q range: [{q.min()*1e3:.4f}, {q.max()*1e3:.4f}] mC")
-    print(f"v range: [{v.min():.4f}, {v.max():.4f}] V")
-    print(f"G range: [{m.conductance(w.max())*1e3:.2f}, {m.conductance(w.min())*1e3:.2f}] mS")
+"""
+m = TEAMMemristor(
+    k_off=1.333,
+    k_on=-1.333,
+    alpha_off=2,
+    alpha_on=2,
+    i_off=0.5e-3,
+    i_on=-0.5e-3,
+    G_on=1/500,
+    G_off=1/5000,
+    w_init=0.5,
+)
 
-    for target in [0.5, 1.0, 1.5, 2.0]:
-        idx = np.argmin(np.abs(t - target))
-        print(f"t={target:1.1f}s -> t={t[idx]:.4f}s, w={w[idx]:.4f}, q={q[idx]*1e3:.6f} mC, v={v[idx]:.4f} V")
+t, w, v, i, q = plot(m, t_end=6.0, freq=1.0, amp=1.0)
+
+print(f"w range: [{w.min():.3f}, {w.max():.3f}]")
+print(f"R range: [{m.resistance(w.max())/1e3:.2f}, {m.resistance(w.min())/1e3:.2f}] kOhm")
+"""
