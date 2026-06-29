@@ -231,6 +231,12 @@ class BiolekMemcapacitor(Memcapacitive):
     def network_current(self, v):
         return self.current()
     
+    def current_conductance(self, dt):
+        return 1.0 / (self.DM(self.x) * dt)
+
+    def current_offset(self, dt):
+        return -self.q / dt
+    
     def state(self):
         return self.x
     

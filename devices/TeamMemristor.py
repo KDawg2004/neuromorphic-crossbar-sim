@@ -46,6 +46,7 @@ class TEAMMemristor(Memristive):
         self.G_off = G_off
         self.w_init = w_init
         self.p = p
+        self.w = w_init
 
     def set_state(self, w) -> None:
         """
@@ -66,7 +67,7 @@ class TEAMMemristor(Memristive):
             return 1 - w**(2*self.p)
         else:
             return 1 - (1 - w)**(2*self.p)
-
+    
     def conductance(self, w):
         """
         Calculate the conductance of the memristor based on the state variable w.\n
@@ -74,12 +75,19 @@ class TEAMMemristor(Memristive):
         w = np.clip(w, 0.0, 1.0)
         return self.G_off + w * (self.G_on - self.G_off)
     
+    
     def current(self, v):
         """
         Return the instantaneous current through the memristor
         without updating its internal state.
         """
-        return self.conductance(self.w_init) * v
+        return self.conductance(self.w) * v
+    
+    def current_conductance(self, dt):
+        return self.conductance(self.w)
+
+    def current_offset(self, dt):
+        return 0.0
 
     def dw_dt(self, w, i):
         """"
