@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 
 
 def polygon_area(x, y):
-
+    """
+    Shoelace formula for a simple closed polygon.\n
+    x: x-coordinates of the polygon vertices\n
+    y: y-coordinates of the polygon vertices"""
     return 0.5 * abs(
         np.dot(x, np.roll(y, -1))
         - np.dot(y, np.roll(x, -1))
@@ -39,7 +42,9 @@ def figure8_area(v, q):
 
 
 def validate_alpha_sweep(model):
-
+    """
+    Sweep alpha from 1.2 down to 0.4 and plot the resulting q-v loops and loop areas.
+    """
     alphas = [1.2, 1.0, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
 
     loop_areas = []

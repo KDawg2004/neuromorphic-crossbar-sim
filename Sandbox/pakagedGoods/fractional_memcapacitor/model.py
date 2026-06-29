@@ -1,28 +1,29 @@
+#Author: Kaevin Barta
 import numpy as np
 from math import gamma
 
 
 class BiolekMemcapacitor:
     """
-    Biolek memcapacitor, ported from NgSpice .SUBCKT memC.
-
-    Original netlist structure:
-      Cq, Gq      -- integrator: dq/dt = i(t)  (q is genuine accumulated charge)
-      Cx, Gx      -- integrator: dx/dt = k * q * window(x, i)
-      Emc         -- output: v = DM(x) * (q + IC*Cinit)
-      DM(x)       -- elastance: 1/Cmax + (1/Cmin - 1/Cmax)*x
-      Joglekar window: 1 - (2x-1)^(2p)
-      Biolek window:   1 - (x - (1 - sgn(i))/2)^(2p)
-
-    x is clamped to [0, 1] per the SPICE .define Xlimited limiter.
-
-    Testbench drive: q(t) = Q_amp * sin(2*pi*f*t), so i = dq/dt = Q_amp*2*pi*f*cos(...).
-    This gives bipolar charge (q oscillates around 0), which is required for
-    the state variable x to swing in both directions and produce pinched hysteresis.
+    Fractional-order memcapacitor model based on Biolek's window function.
+    This class implements the memcapacitor model with a fractional-order state variable, 
+    allowing for the simulation of hysteresis behavior in capacitive devices.
+    Contains methods for calculating the elastance, capacitance, window function, voltage, 
+    and simulating the device's response to a charge drive.
     """
 
     def __init__(self, Cmin=10e-9, Cmax=10e-6, Cinit=100e-9, k=1e7, p=1, IC=0.0,
                  window_type='joglekar'):
+        """
+        Initialize the memcapacitor model with given parameters.\n
+        Cmin: minimum capacitance (F)\n
+        Cmax: maximum capacitance (F)\n
+        Cinit: initial capacitance (F)\n
+        k: state variable rate constant\n
+        p: window function exponent\n
+        IC: initial charge (C)\n
+        window_type: type of window function ('joglekar' or 'biolek')
+        """
         self.Cmin = Cmin
         self.Cmax = Cmax
         self.Cinit = Cinit
@@ -34,14 +35,18 @@ class BiolekMemcapacitor:
         # x_init matches the SPICE .param x0
         self.x_init = (1/Cinit - 1/Cmax) / (1/Cmin - 1/Cmax)
         self.q_init = 0.0  # q(t) = Q_amp*sin starts at 0, consistent with Cq uncharged
+        self.x = self.x_init
+        self.q = self.q_init
 
     # -------------------------
     def DM(self, x):
-        """Elastance (inverse capacitance). x is clamped before use."""
+        """Elastance (inverse capacitance). x is clamped before use.
+        x is the internal state variable, which should be in [0,1]."""
         xc = np.clip(x, 0, 1)
         return 1/self.Cmax + (1/self.Cmin - 1/self.Cmax) * xc
 
     def C(self, x):
+        """Capacitance. x is clamped before use."""
         return 1 / self.DM(x)
 
     def window(self, x, i):
@@ -63,7 +68,11 @@ class BiolekMemcapacitor:
 
     # -------------------------
     def charge_refrence(self, t, freq, Q_amp):
-        """Reference charge drive: q(t) = Q_amp * sin(2*pi*f*t)."""
+        """
+        This represents the charge drive q(t) = Q_amp * sin(2*pi*f*t).
+        This keeps q bipolar (oscillates around 0), which is necessary for x
+        to swing in both directions and produce a proper hysteresis loop.
+        """
         return Q_amp * np.sin(2 * np.pi * freq * t)
 
     def current_drive(self, t, freq=1.0, Q_amp=100e-9):
@@ -80,6 +89,11 @@ class BiolekMemcapacitor:
         return Q_amp * 2 * np.pi * freq * np.cos(2 * np.pi * freq * t)
 
     def ode(self, t, y, freq, Q_amp):
+        """
+        ODE system for the memcapacitor model.
+        y = [q, x], where q is the charge and x is the internal state variable.
+        dq/dt = i(t), where i(t) is the current drive.
+        """
         q, x = y
         i = self.current_drive(t, freq, Q_amp)
 
@@ -94,6 +108,15 @@ class BiolekMemcapacitor:
 
     # -------------------------
     def simulate(self, t_end=5, freq=1.0, Q_amp=100e-9, alpha=1.0, n_points=1000):
+        """
+        Simulate the memcapacitor response over time.\n
+        t_end: end time of simulation (s)\n
+        freq: frequency of the charge drive (Hz)\n
+        Q_amp: amplitude of the charge drive (C)\n
+        alpha: fractional order of the state variable (0 < alpha <= 1)\n
+        n_points: number of time points for simulation\n
+        Returns: time array, charge array, state variable array, voltage array, current array
+        """
         t_eval = np.linspace(0, t_end, n_points)
 
         t = np.linspace(0, t_end, n_points)
@@ -182,5 +205,30 @@ class BiolekMemcapacitor:
             )
 
         return x
+
+    def step(self, i, dt):
+        print("NEW STEP FUNCTION")
+        x_eff = np.clip(self.x, 0, 1)
+
+        q_old = self.q
+
+        dx = self.k * q_old * self.window(x_eff, i)
+
+        if (self.x <= 0 and dx < 0) or (self.x >= 1 and dx > 0):
+            dx = 0.0
+
+        self.x = np.clip(self.x + dt * dx, 0, 1)
+
+        self.q += i * dt
+
+        return self.voltage(self.q, self.x)
+    
+    def state(self):
+        return self.x
+    
+    def reset(self):
+        self.x = self.x_init
+        self.q = self.q_init
+
 
 
