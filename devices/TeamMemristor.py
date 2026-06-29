@@ -2,8 +2,9 @@
 #File/class: Team_memristor/TeamMemristor.py
 import numpy as np
 from scipy.integrate import solve_ivp
+from .memristive import Memristive
 
-class TEAMMemristor:
+class TEAMMemristor(Memristive):
     """
     TEAM (Threshold Adaptive Memristor) model as a reusable class.
     This class implements the TEAM memristor model, which captures the nonlinear dynamics of memristive devices with threshold behavior.
@@ -100,6 +101,12 @@ class TEAMMemristor:
             dw = 0.0
 
         return dw
+    
+    def network_step(self, v, dt):
+        self.step(v, dt)
+
+    def network_current(self, v):
+        return self.current(v)
     
     def step(self, v, dt) -> float:
         """

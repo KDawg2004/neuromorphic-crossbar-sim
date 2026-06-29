@@ -1,9 +1,9 @@
 #Author: Kaevin Barta
 import numpy as np
 from math import gamma
+from .memcapacitive import Memcapacitive
 
-
-class BiolekMemcapacitor:
+class BiolekMemcapacitor(Memcapacitive):
     """
     Fractional-order memcapacitor model based on Biolek's window function.
     This class implements the memcapacitor model with a fractional-order state variable, 
@@ -223,6 +223,13 @@ class BiolekMemcapacitor:
         self.q += i * dt
 
         return self.voltage(self.q, self.x)
+    
+    def network_step(self, v, dt):
+        i = self.equivalent_current(v, dt)
+        self.step(i, dt)
+    
+    def network_current(self, v):
+        return self.current()
     
     def state(self):
         return self.x

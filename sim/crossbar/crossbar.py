@@ -80,26 +80,18 @@ class Crossbar:
 
                 v = self.row_inputs[row]
 
-                if hasattr(device, "current"):
-
-                    if device.__class__.__name__ == "TEAMMemristor":
-                        currents[col] += device.current(v)
-                    else:
-                        currents[col] += device.current()
+                currents[col] += device.network_current(v)
 
         return currents
     
     def step(self, dt):
         """
         Advance all devices by one timestep.
-
-        Memristors are voltage driven.
-        Memcapacitors are internally current driven, so convert the
-        applied voltage into an equivalent current before stepping.
         """
 
         for row in range(self.rows):
             for col in range(self.cols):
+
                 device = self.devices[row][col]
 
                 if device is None:
@@ -107,11 +99,4 @@ class Crossbar:
 
                 v = self.row_inputs[row]
 
-                if isinstance(device, TEAMMemristor):
-                    device.step(v, dt)
-
-                elif isinstance(device, BiolekMemcapacitor):
-                    # Charge implied by the applied voltage
-                    q_new = v / device.DM(device.x)
-                    i = (q_new - device.q) / dt
-                    device.step(i, dt)
+                device.network_step(v, dt)
