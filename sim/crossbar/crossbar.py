@@ -24,6 +24,12 @@ class Crossbar:
 
     cols : int
         Number of bit lines.
+
+    R_row : float
+        Row wire resistance in ohms. Default is 0.0 (ideal).
+
+    R_col : float
+        Column wire resistance in ohms. Default is 0.0 (ideal).
     """
 
     def __init__(self, rows, cols, R_row=0.0, R_col=0.0):
@@ -150,7 +156,9 @@ class Crossbar:
 
     def compute_column_currents_mna(self, dt):
         """
-        Solve node voltages then sum device currents per column.
+        Solve node voltages then sum device currents per column using modified nodal analysis (MNA) to account for wire resistance.
+        dt: timestep (s)
+        Returns: (cols,) array of column currents
         """
         V_nodes = self.solve_node_voltages(dt)
         currents = np.zeros(self.cols)
@@ -171,6 +179,7 @@ class Crossbar:
     def step(self, dt):
         """
         Advance all devices by one timestep.
+        dt: timestep (s)
         """
         V_nodes = self.solve_node_voltages(dt)
 
