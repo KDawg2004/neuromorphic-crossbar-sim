@@ -4,6 +4,9 @@ from .device import Device
 
 
 class Memcapacitive(Device):
+    """
+    Abstract base class for memcapacitive devices.
+    """
 
     @abstractmethod
     def step(self, i, dt):

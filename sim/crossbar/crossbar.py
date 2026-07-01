@@ -10,7 +10,6 @@ in future revisions.
 """
 
 import numpy as np
-from devices import TEAMMemristor, BiolekMemcapacitor
 
 
 class Crossbar:
@@ -70,7 +69,7 @@ class Crossbar:
 
         self.row_inputs = np.asarray(inputs)
 
-    def compute_column_currents(self):
+    def _compute_column_currents_IDEAL_WIRE(self):
         """
         Sum currents from every device in each column.
         """
@@ -135,22 +134,22 @@ class Crossbar:
                     A[n, n] = 1.0
                     b[n] = self.row_inputs[row]
         
-        # Column resistance terms
-        if self.R_col > 0.0:
-            g_col = 1.0 / self.R_col
+                # Column resistance terms
+                if self.R_col > 0.0:
+                    g_col = 1.0 / self.R_col
 
-            # Above neighbor (row > 0 only, column tops float)
-            if row > 0:
-                A[n, n] -= g_col
-                A[n, n - self.cols] += g_col
+                    # Above neighbor (row > 0 only, column tops float)
+                    if row > 0:
+                        A[n, n] -= g_col
+                        A[n, n - self.cols] += g_col
 
-            # Below neighbor or ground
-            if row < self.rows - 1:
-                A[n, n] -= g_col
-                A[n, n + self.cols] += g_col
-            else:
-                # Last row: column bottom is grounded
-                A[n, n] -= g_col
+                    # Below neighbor or ground
+                    if row < self.rows - 1:
+                        A[n, n] -= g_col
+                        A[n, n + self.cols] += g_col
+                    else:
+                        # Last row: column bottom is grounded
+                        A[n, n] -= g_col
 
         return np.linalg.solve(A, b)
 
@@ -175,6 +174,13 @@ class Crossbar:
                 currents[col] += G * v + I_eq
 
         return currents
+    
+    def compute_column_currents(self, dt):
+        if self.R_row == 0.0 and self.R_col == 0.0:
+            return self._compute_column_currents_IDEAL_WIRE()
+        else:
+            return self.compute_column_currents_mna(dt)
+        
     
     def step(self, dt):
         """

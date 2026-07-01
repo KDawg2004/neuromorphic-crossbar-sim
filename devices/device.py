@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class Device(ABC):
+    """
+    Abstract base class for all devices.
+    """
 
     @abstractmethod
     def network_step(self, v, dt):

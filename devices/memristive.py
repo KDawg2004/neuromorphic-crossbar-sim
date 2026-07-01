@@ -4,6 +4,9 @@ from .device import Device
 
 
 class Memristive(Device):
+    """
+    Abstract base class for memristive devices.
+    """
 
     @abstractmethod
     def step(self, v, dt):
