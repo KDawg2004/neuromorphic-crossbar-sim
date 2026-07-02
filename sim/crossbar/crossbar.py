@@ -93,73 +93,96 @@ class Crossbar:
     def solve_node_voltages(self, dt):
         """
         Build and solve MNA system for node voltages under row and column wire resistance.
-        Returns (rows*cols,) array of node voltages, flattened row-major.
+
+        Node layout: 2 * rows * cols unknowns.
+        Row-rail node for (row, col):    index = row * cols + col
+        Column-rail node for (row, col): index = rows * cols + row * cols + col
+
+        Device sits between the row-rail node and column-rail node at each crosspoint.
+        Row-rail is driven by row_inputs at col=0, chained rightward by R_row.
+        Column-rail is grounded at the bottom row, chained upward by R_col.
         """
-        n_nodes = self.rows * self.cols
+        n_cells = self.rows * self.cols
+        n_nodes = 2 * n_cells
         A = np.zeros((n_nodes, n_nodes))
         b = np.zeros(n_nodes)
 
+        def row_node(r, c):
+            return r * self.cols + c
+
+        def col_node(r, c):
+            return n_cells + r * self.cols + c
+
         g_wire = 1.0 / self.R_row if self.R_row > 0.0 else None
+        g_col = 1.0 / self.R_col if self.R_col > 0.0 else None
 
         for row in range(self.rows):
             for col in range(self.cols):
-                n = row * self.cols + col
+
+                nr = row_node(row, col)
+                nc = col_node(row, col)
                 device = self.devices[row][col]
 
-                # Device companion model
+                # Device companion model, current flows row-rail -> column-rail
                 if device is not None:
                     G = device.current_conductance(dt)
                     I_eq = device.current_offset(dt)
-                    A[n, n] -= G
-                    b[n] -= I_eq
 
-                # Wire resistance terms
+                    A[nr, nr] -= G
+                    A[nr, nc] += G
+                    b[nr] -= I_eq
+
+                    A[nc, nc] -= G
+                    A[nc, nr] += G
+                    b[nc] += I_eq
+
+                # Row-rail wire chain
                 if g_wire is not None:
-                    # Left connection
                     if col == 0:
-                        # Source node, apply boundary condition
-                        A[n, n] -= g_wire
-                        b[n] -= g_wire * self.row_inputs[row]
+                        A[nr, nr] -= g_wire
+                        b[nr] -= g_wire * self.row_inputs[row]
                     else:
-                        # Internal left neighbor
-                        A[n, n] -= g_wire
-                        A[n, n - 1] += g_wire
+                        A[nr, nr] -= g_wire
+                        A[nr, row_node(row, col - 1)] += g_wire
 
-                    # Right connection
                     if col < self.cols - 1:
-                        A[n, n] -= g_wire
-                        A[n, n + 1] += g_wire
+                        A[nr, nr] -= g_wire
+                        A[nr, row_node(row, col + 1)] += g_wire
                 else:
-                    # Ideal: node voltage equals row input directly
-                    A[n, n] = 1.0
-                    b[n] = self.row_inputs[row]
-        
-                # Column resistance terms
-                if self.R_col > 0.0:
-                    g_col = 1.0 / self.R_col
+                    # zero row resistance: row-rail node is forced to source voltage
+                    A[nr, :] = 0.0
+                    A[nr, nr] = 1.0
+                    b[nr] = self.row_inputs[row]
 
-                    # Above neighbor (row > 0 only, column tops float)
+                # Column-rail wire chain
+                if g_col is not None:
                     if row > 0:
-                        A[n, n] -= g_col
-                        A[n, n - self.cols] += g_col
+                        A[nc, nc] -= g_col
+                        A[nc, col_node(row - 1, col)] += g_col
 
-                    # Below neighbor or ground
                     if row < self.rows - 1:
-                        A[n, n] -= g_col
-                        A[n, n + self.cols] += g_col
+                        A[nc, nc] -= g_col
+                        A[nc, col_node(row + 1, col)] += g_col
                     else:
-                        # Last row: column bottom is grounded
-                        A[n, n] -= g_col
+                        # bottom row: column-rail grounded through R_col
+                        A[nc, nc] -= g_col
+                else:
+                    # zero column resistance: column-rail node forced to ground
+                    A[nc, :] = 0.0
+                    A[nc, nc] = 1.0
+                    b[nc] = 0.0
 
         return np.linalg.solve(A, b)
 
     def compute_column_currents_mna(self, dt):
         """
-        Solve node voltages then sum device currents per column using modified nodal analysis (MNA) to account for wire resistance.
+        Solve node voltages then sum device currents per column using MNA
+        to account for wire resistance.
         dt: timestep (s)
         Returns: (cols,) array of column currents
         """
         V_nodes = self.solve_node_voltages(dt)
+        n_cells = self.rows * self.cols
         currents = np.zeros(self.cols)
 
         for row in range(self.rows):
@@ -167,11 +190,18 @@ class Crossbar:
                 device = self.devices[row][col]
                 if device is None:
                     continue
-                n = row * self.cols + col
-                v = V_nodes[n]
+
+                nr = row * self.cols + col
+                nc = n_cells + row * self.cols + col
+
+                v_row = V_nodes[nr]
+                v_col = V_nodes[nc]
+                v_device = v_row - v_col
+
                 G = device.current_conductance(dt)
                 I_eq = device.current_offset(dt)
-                currents[col] += G * v + I_eq
+
+                currents[col] += G * v_device + I_eq
 
         return currents
     
@@ -188,6 +218,7 @@ class Crossbar:
         dt: timestep (s)
         """
         V_nodes = self.solve_node_voltages(dt)
+        n_cells = self.rows * self.cols
 
         for row in range(self.rows):
             for col in range(self.cols):
@@ -197,7 +228,9 @@ class Crossbar:
                 if device is None:
                     continue
 
-                n = row * self.cols + col
-                v = V_nodes[n]
+                nr = row * self.cols + col
+                nc = n_cells + row * self.cols + col
 
-                device.network_step(v, dt)
+                v_device = V_nodes[nr] - V_nodes[nc]
+
+                device.network_step(v_device, dt)

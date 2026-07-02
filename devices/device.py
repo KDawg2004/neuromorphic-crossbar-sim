@@ -15,5 +15,12 @@ class Device(ABC):
         pass
 
     @abstractmethod
+    def set_conductance(self, G):
+        """
+        Program the device to the requested conductance.
+        """
+        pass
+
+    @abstractmethod
     def state(self):
         pass

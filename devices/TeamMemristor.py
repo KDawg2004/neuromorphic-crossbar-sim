@@ -75,6 +75,14 @@ class TEAMMemristor(Memristive):
         w = np.clip(w, 0.0, 1.0)
         return self.G_off + w * (self.G_on - self.G_off)
     
+    def set_conductance(self, G):
+        """
+        Program the device to the requested conductance.
+        """
+        G = np.clip(G, self.G_off, self.G_on)
+
+        self.w = (G - self.G_off) / (self.G_on - self.G_off)
+    
     
     def current(self, v):
         """

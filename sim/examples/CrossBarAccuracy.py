@@ -4,19 +4,14 @@ from sim.nn.layer import CrossbarLayer
 from sim.nn.network import NeuralNetwork
 from devices.TeamMemristor import TEAMMemristor
 from sim.nn.mapper import CrossbarProgrammer
-from sim.training.toydataset import X
+from sim.training.toydataset import X, y
 
 dt = 1e-4
 
-W = np.load("sim/training/trained_weights.npy")  # shape (16, 4)
+W = np.load("sim/training/trained_weights.npy")
 in_features, out_features = W.shape
 
-cb = Crossbar(
-    rows=in_features,
-    cols=out_features * 2, 
-    R_row=1e-3, 
-    R_col=1e-3
-)
+cb = Crossbar(rows=in_features, cols=out_features * 2)
 
 for row in range(cb.rows):
     for col in range(cb.cols):
@@ -42,7 +37,18 @@ layer = CrossbarLayer(cb)
 network = NeuralNetwork()
 network.add_layer(layer)
 
-x = X[0]  # one 16-length input from your toy dataset
-y = network.forward(x, dt)
+correct = 0
+preds = []
 
-print("Crossbar output:", y)
+for i in range(len(X)):
+    programmer.map_weights(cb, W)  # reset devices to clean mapped state before each sample
+    out = network.forward(X[i], dt)
+    pred = np.argmax(out)
+    preds.append(pred)
+    if pred == y[i]:
+        correct += 1
+
+accuracy = correct / len(X)
+print("Predictions:", preds)
+print("Labels:     ", y.tolist())
+print(f"Crossbar accuracy: {accuracy:.4f} ({correct}/{len(X)})")

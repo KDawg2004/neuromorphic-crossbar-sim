@@ -224,6 +224,11 @@ class BiolekMemcapacitor(Memcapacitive):
 
         return self.voltage(self.q, self.x)
     
+    def set_conductance(self, G):
+        raise NotImplementedError(
+            "Memcapacitors do not support conductance programming."
+        )
+    
     def network_step(self, v, dt):
         i = self.equivalent_current(v, dt)
         self.step(i, dt)

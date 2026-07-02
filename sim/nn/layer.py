@@ -7,22 +7,6 @@ class CrossbarLayer:
         self.crossbar = crossbar
 
     def forward(self, x, dt):
-        """
-        Perform one forward pass through the crossbar.
-
-        Parameters
-        ----------
-        x : array-like
-            Input vector.
-
-        dt : float
-            Simulation timestep.
-
-        Returns
-        -------
-        ndarray
-            Output current vector.
-        """
         if len(x) != self.crossbar.rows:
             raise ValueError(
                 f"Expected {self.crossbar.rows} inputs, got {len(x)}."
@@ -30,7 +14,16 @@ class CrossbarLayer:
 
         self.crossbar.apply_row_inputs(x)
 
-        y = self.crossbar.compute_column_currents(dt)
+        raw = self.crossbar.compute_column_currents(dt)
+
+        if len(raw) % 2 != 0:
+            raise RuntimeError(
+                f"Crossbar column count {len(raw)} is not even, cannot pair for differential readout."
+            )
+
+        i_plus = raw[0::2]
+        i_minus = raw[1::2]
+        y = i_plus - i_minus
 
         self.crossbar.step(dt)
 
