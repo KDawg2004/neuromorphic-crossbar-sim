@@ -283,3 +283,7 @@ class BiolekMemcapacitor(Memcapacitive):
         q_new = v / self.DM(self.x)
 
         return (q_new - self.q) / dt
+    
+    def program(self, state):
+        self.x = np.clip(state, 0.0, 1.0)
+        self.x_init = self.x

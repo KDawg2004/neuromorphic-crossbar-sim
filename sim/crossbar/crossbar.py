@@ -47,7 +47,6 @@ class Crossbar:
         """
         Place a device object into the crossbar.
         """
-
         self.devices[row][col] = device
 
     def get_device(self, row, col):
@@ -87,6 +86,47 @@ class Crossbar:
                 v = self.row_inputs[row]
 
                 currents[col] += device.network_current(v)
+
+        return currents
+    
+    def forward_step(self, dt):
+        """
+        Solve node voltages once, compute column currents and advance
+        device states from that single solve. Replaces separate calls to
+        compute_column_currents(dt) + step(dt) when both are needed for
+        the same dt on the same inputs.
+        Returns: (cols,) array of column currents.
+        """
+        if self.R_row == 0.0 and self.R_col == 0.0:
+            currents = self._compute_column_currents_IDEAL_WIRE()
+            for row in range(self.rows):
+                for col in range(self.cols):
+                    device = self.devices[row][col]
+                    if device is None:
+                        continue
+                    v = self.row_inputs[row]
+                    device.network_step(v, dt)
+            return currents
+
+        V_nodes = self.solve_node_voltages(dt)
+        n_cells = self.rows * self.cols
+        currents = np.zeros(self.cols)
+
+        for row in range(self.rows):
+            for col in range(self.cols):
+                device = self.devices[row][col]
+                if device is None:
+                    continue
+
+                nr = row * self.cols + col
+                nc = n_cells + row * self.cols + col
+                v_device = V_nodes[nr] - V_nodes[nc]
+
+                G = device.current_conductance(dt)
+                I_eq = device.current_offset(dt)
+                currents[col] += G * v_device + I_eq
+
+                device.network_step(v_device, dt)
 
         return currents
     

@@ -22,17 +22,15 @@ class CrossbarProgrammer:
                 device_plus = crossbar.get_device(row, col * 2)
                 device_minus = crossbar.get_device(row, col * 2 + 1)
 
-                g_plus, g_minus = self._encode_differential(
-                    w_norm, device_plus.G_on, device_plus.G_off
-                )
+                state_plus, state_minus = self._encode_differential(w_norm)
 
-                device_plus.set_conductance(g_plus)
-                device_minus.set_conductance(g_minus)
+                device_plus.program(state_plus)
+                device_minus.program(state_minus)
 
-    def _encode_differential(self, w_norm, G_on, G_off):
+    def _encode_differential(self, w_norm):
         mag = abs(w_norm)
-        g_active = G_off + mag * (G_on - G_off)
+
         if w_norm >= 0:
-            return g_active, G_off
+            return mag, 0.0
         else:
-            return G_off, g_active
+            return 0.0, mag
