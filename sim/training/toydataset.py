@@ -18,8 +18,6 @@ def make_x():
     img = (img > 0).astype(float)
     return img.flatten()
 
-import numpy as np
-
 rng = np.random.default_rng(0)
 
 def add_noise(img, p=0.1):

@@ -1,51 +1,363 @@
 # neuromorphic-crossbar-sim
 
-A research-oriented simulation framework for studying neuromorphic crossbar arrays built from memristor and memcapacitor devices. Built for undergraduate research at the Portland State DISC Lab (Project 18, Summer Proceedings 2026), investigating how device-level non-idealities, including parasitic wire resistance and device variability, propagate to network-level behavior in mixed memristive/memcapacitive crossbar arrays.
+A research-oriented simulation framework for studying neuromorphic crossbar arrays built from memristor and memcapacitor devices. Developed for undergraduate research at the Portland State University DISC Lab (Project 18, Summer Proceedings 2026), the framework investigates how device-level non-idealities—including parasitic wire resistance, device-to-device variability, and mixed-device architectures—affect neural network inference.
 
-## Repository structure
+The simulator separates device physics from circuit simulation through a common device interface, allowing heterogeneous crossbars containing arbitrary combinations of memristive and memcapacitive devices.
 
-### `devices/`
-Validated device models, the core reusable physics layer.
-- `TeamMemristor.py`: TEAM threshold-switching memristor model (Kvatinsky et al. 2013)
-- `FracMemCap.py`: Biolek memcapacitor model (Biolek et al. 2010), integer-order solver validated, fractional-order solver implemented but not yet validated under the crossbar/MNA path
-- `device.py`, `memristive.py`, `memcapacitive.py`: abstract base interfaces shared by both device types
+---
 
-### `sim/`
-The simulation framework built on top of validated devices.
-- `crossbar/crossbar.py`: N×N crossbar with Kirchhoff-consistent current summation. Supports an ideal (zero-resistance) mode and a Modified Nodal Analysis (MNA) solver for row and column parasitic wire resistance. Devices are accessed through a common interface (`network_step`, `network_current`, `current_conductance`, `current_offset`), so the crossbar has no knowledge of device-specific physics.
-- `examples/crossDemo.py`: validation suite for the crossbar, confirms MNA matches the ideal path at zero resistance, confirms correct voltage sag under row/column parasitics, and validates mixed memristor/memcapacitor arrays
-- `plotting/`: I-V and Q-V plotting utilities for individual devices
+# Features
 
-### `Sandbox/`
-Earlier, pre-refactor implementations of the device models and standalone packages (`fractional_memcapacitor/`, `Team_memristor/`). Kept for reference and for the validation work done against published curves before the current `devices/` package existed. Not part of the active framework.
+- Device-agnostic crossbar architecture
+- TEAM threshold memristor implementation
+- Biolek memcapacitor implementation (integer and fractional order)
+- Modified Nodal Analysis (MNA) solver for row/column parasitic resistance
+- Mixed memristor/memcapacitor arrays
+- Weight mapping from neural networks to physical device states
+- Monte Carlo device variability
+- Reproducible random seeds
+- PyTorch integration for training and inference experiments
+- Validation utilities and comparison examples
 
-### `testing/`
-Xyce/SPICE netlists and supporting scripts used to cross-check device and crossbar behavior against an independent circuit simulator. Includes single-device netlists (`singleMemristor.cir`, `singleMemCap.cir`) and 4x4 crossbar netlists (`memResCrossBar4x4.cir`, `memCapCrossBar4x4.cir`, `resCrossBar4x4.cir`).
+---
 
-## Current status
+# Repository Structure
 
-- TEAM memristor: validated against published I-V curves, validated under MNA with and without parasitic resistance
-- Biolek memcapacitor (integer-order): validated under MNA at zero resistance, companion model confirmed numerically identical to standalone device behavior
-- Crossbar: device-agnostic architecture, MNA solver handles row and column wire resistance simultaneously, validated with mixed memristor/memcapacitor arrays
-- Fractional-order memcapacitor solver: implemented, not yet validated under MNA
+## devices/
 
-## Typical workflow
+Reusable device physics layer.
 
-### Python crossbar simulation
+### Core interfaces
+
+- `device.py`
+- `memristive.py`
+- `memcapacitive.py`
+
+Defines the abstract interfaces shared by all device models.
+
+Every device exposes a common API used by the crossbar solver:
+
+- `network_current()`
+- `network_step()`
+- `current_conductance()`
+- `current_offset()`
+- `program()`
+
+This allows the circuit solver to remain completely independent of device physics.
+
+### Device models
+
+#### `TeamMemristor.py`
+
+Implementation of the TEAM threshold adaptive memristor model.
+
+Features:
+
+- Threshold switching
+- Continuous state evolution
+- Conductance programming
+- Crossbar-compatible linearization
+- Variability support
+- MNA validated
+
+#### `FracMemCap.py`
+
+Implementation of the Biolek memcapacitor model.
+
+Features:
+
+- Integer-order companion model
+- Fractional-order implementation
+- Internal state dynamics
+- Charge-based behavior
+- Crossbar-compatible interface
+
+---
+
+## sim/
+
+Simulation framework.
+
+### crossbar/
+
+#### `crossbar.py`
+
+Implements an arbitrary M×N crossbar supporting
+
+- ideal arrays
+- row parasitic resistance
+- column parasitic resistance
+- full MNA solution
+- heterogeneous device arrays
+
+The solver never depends on a specific device type.
+
+#### `builders.py`
+
+Crossbar construction utilities.
+
+Current functionality includes
+
+- automatic device construction
+- mixed-device arrays
+- parameter presets
+- reproducible RNG/seed handling
+- device variability injection
+
+---
+
+### nn/
+
+Simple neural network abstraction.
+
+Includes
+
+- fully connected layer
+- network container
+- weight mapper
+
+The mapper converts trained floating-point weights into physical device states without requiring device-specific code.
+
+---
+
+### training/
+
+PyTorch training utilities.
+
+Includes
+
+- toy dataset
+- simple training pipeline
+- inference preparation
+
+---
+
+### plotting/
+
+Visualization utilities.
+
+Includes plotting for
+
+- TEAM I-V hysteresis
+- Biolek Q-V hysteresis
+- device validation
+- parameter sweeps
+
+---
+
+### examples/
+
+Example simulations demonstrating framework capabilities.
+
+Current examples include
+
+- `crossDemo.py`
+
+  General crossbar demonstration.
+
+- `CrossBarAccuracy.py`
+
+  Verifies ideal and MNA paths produce identical solutions when parasitic resistance is zero.
+
+- `networkDemo.py`
+
+  Neural network inference through the simulated crossbar.
+
+- `mixedBuildTest.py`
+
+  Mixed memristor/memcapacitor construction.
+
+- `mixedInferenceSmoke.py`
+
+  Smoke test validating heterogeneous inference.
+
+- `mixedMapTest.py`
+
+  Device-independent weight mapping.
+
+- `parasiticSweep.py`
+
+  Effect of increasing wire resistance.
+
+- `stateManagement.py`
+
+  Device programming and state consistency.
+
+- `variabilitySweep.py`
+
+  Monte Carlo variability experiments.
+
+- `variabilityTest.py`
+
+  Validation of variability implementation, ordering, and reproducibility.
+
+---
+
+## Sandbox/
+
+Historical implementations developed before the current framework architecture.
+
+Contains
+
+- standalone TEAM package
+- standalone fractional memcapacitor package
+- validation utilities
+- prototype implementations
+
+Retained for reference only.
+
+---
+
+## testing/
+
+Validation scripts used during development.
+
+Includes
+
+- single-device verification
+- plotting utilities
+- comparison against standalone implementations
+
+---
+
+# Current Status
+
+## Device Models
+
+### TEAM Memristor
+
+✔ Validated against published I-V hysteresis
+
+✔ Threshold switching verified
+
+✔ Crossbar compatible
+
+✔ MNA validated
+
+---
+
+### Biolek Memcapacitor
+
+✔ Integer-order implementation validated
+
+✔ Fractional-order implementation complete
+
+✔ Crossbar compatible
+
+⚠ Fractional-order MNA validation still in progress
+
+---
+
+## Crossbar
+
+✔ Device-agnostic architecture
+
+✔ Mixed-device arrays
+
+✔ Full MNA solver
+
+✔ Ideal solver
+
+✔ Row and column parasitic resistance
+
+✔ Shared device interface
+
+---
+
+## Neural Network Support
+
+✔ Weight mapping
+
+✔ Device-independent programming
+
+✔ Mixed-device inference
+
+✔ Smoke-tested inference pipeline
+
+---
+
+## Variability
+
+Implemented:
+
+- reproducible random seeds
+- device-to-device variability
+- log-normal resistance distributions
+- configurable coefficient of variation
+- deterministic Monte Carlo experiments
+
+Current variability parameters use estimated CV values pending publication-quality statistical data from experimental RRAM literature.
+
+---
+
+# Validation Summary
+
+Verified:
+
+- TEAM standalone vs crossbar
+- Biolek standalone vs crossbar
+- Ideal solver vs MNA
+- Zero-parasitic equivalence
+- Mixed-device construction
+- Device-independent mapping
+- Programming consistency
+- Variability ordering
+- RNG reproducibility
+- Non-degenerate inference outputs
+
+---
+
+# Typical Usage
+
+Run a crossbar demonstration
+
+```bash
 python -m sim.examples.crossDemo
+```
 
-### Xyce/SPICE cross-validation
-cd testing
+Run mixed-device inference
 
-Xyce singleMemristor.cir
+```bash
+python -m sim.examples.networkDemo
+```
 
-cat singleMemristor.cir.prn
+Run variability sweep
 
-## Roadmap
+```bash
+python -m sim.examples.variabilitySweep
+```
 
-Per the project plan (Summer Proceedings 2026):
-- Weeks 1-2: device models (complete)
-- Weeks 3-4: crossbar assembly with parasitic resistance, mixed device columns (in progress)
-- Weeks 5-6: train a small fully connected network in PyTorch, map weights to crossbar conductances
-- Weeks 7-8: Monte Carlo simulation over device-to-device variability from CMOS-integrated RRAM distributions
-- Weeks 9-10: optional reservoir computing reconfiguration, technical report
+Run parasitic resistance sweep
+
+```bash
+python -m sim.examples.parasiticSweep
+```
+
+---
+
+# Research Roadmap
+
+Completed
+
+- TEAM memristor implementation
+- Biolek memcapacitor implementation
+- Mixed-device architecture
+- Device-independent crossbar
+- Full MNA solver
+- Neural-network weight mapping
+- Device variability
+- Monte Carlo framework
+
+In Progress
+
+- Training larger neural networks
+- Experimental variability calibration
+- Fractional-order MNA validation
+
+Planned
+
+- Reservoir computing experiments
+- Additional compact device models
+- Larger benchmark datasets
+- Performance optimization
+- Summer Proceedings technical report
