@@ -4,6 +4,16 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from .memristive import Memristive
 
+TEAM_DEFAULTS = dict(
+    k_off=1.333,
+    k_on=-1.333,
+    alpha_off=2,
+    alpha_on=2,
+    i_off=0.5e-3,
+    i_on=-0.5e-3,
+    G_on=1/500,
+    G_off=1/5000,
+)
 class TEAMMemristor(Memristive):
     """
     TEAM (Threshold Adaptive Memristor) model as a reusable class.
@@ -12,16 +22,18 @@ class TEAMMemristor(Memristive):
     """
     def __init__(
         self,
-        k_off=1,
-        k_on=-1,
-        alpha_off=5,
-        alpha_on=5,
-        i_off=0.5e-3,
-        i_on=-0.5e-3,
-        G_on=1/1e3,
-        G_off=1/10e3,
+        k_off=TEAM_DEFAULTS["k_off"],
+        k_on=TEAM_DEFAULTS["k_on"],
+        alpha_off=TEAM_DEFAULTS["alpha_off"],
+        alpha_on=TEAM_DEFAULTS["alpha_on"],
+        i_off=TEAM_DEFAULTS["i_off"],
+        i_on=TEAM_DEFAULTS["i_on"],
+        G_on=TEAM_DEFAULTS["G_on"],
+        G_off=TEAM_DEFAULTS["G_off"],
         w_init=0.5,
         p=2,
+        variability_cv=0.0,
+        rng=None
     ):
         """
         Initialize the TEAM memristor model with the given parameters.
@@ -35,7 +47,16 @@ class TEAMMemristor(Memristive):
         G_off: conductance in off-state\n
         w_init: initial state variable (0=off, 1=on)\n
         p: window function exponent\n
+        variability_cv : coefficient of variation (std/mean) applied to G_on and G_off
+        independently at construction, e.g. 0.15 for 15% device-to-device spread.
+        0.0 (default) reproduces current deterministic behavior exactly.
+        rng : optional np.random.Generator for reproducible draws. If None, uses
+        module-level default (non-reproducible across runs).
         """
+        if variability_cv > 0:
+            rng = rng or np.random.default_rng()
+            G_on = rng.lognormal(mean=np.log(G_on), sigma=variability_cv)
+            G_off = rng.lognormal(mean=np.log(G_off), sigma=variability_cv)
         self.k_off = k_off
         self.k_on = k_on
         self.alpha_off = alpha_off
@@ -46,6 +67,7 @@ class TEAMMemristor(Memristive):
         self.G_off = G_off
         self.w_init = w_init
         self.p = p
+        
 
     def set_state(self, w) -> None:
         """

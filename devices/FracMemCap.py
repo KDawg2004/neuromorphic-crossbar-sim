@@ -3,6 +3,13 @@ import numpy as np
 from math import gamma
 from .memcapacitive import Memcapacitive
 
+BIOLEK_DEFAULTS = dict(
+    Cmin=10e-9,
+    Cmax=10e-6,
+    Cinit=100e-9,
+    k=1e7,
+    p=1,
+)
 class BiolekMemcapacitor(Memcapacitive):
     """
     Fractional-order memcapacitor model based on Biolek's window function.
@@ -12,8 +19,9 @@ class BiolekMemcapacitor(Memcapacitive):
     and simulating the device's response to a charge drive.
     """
 
-    def __init__(self, Cmin=10e-9, Cmax=10e-6, Cinit=100e-9, k=1e7, p=1, IC=0.0,
-                 window_type='joglekar'):
+    def __init__(self, Cmin=BIOLEK_DEFAULTS["Cmin"], Cmax=BIOLEK_DEFAULTS["Cmax"],
+                 Cinit=BIOLEK_DEFAULTS["Cinit"], k=BIOLEK_DEFAULTS["k"], p=BIOLEK_DEFAULTS["p"],
+                 IC=0.0, window_type='joglekar', variability_cv=0.0, rng=None):
         """
         Initialize the memcapacitor model with given parameters.\n
         Cmin: minimum capacitance (F)\n
@@ -24,6 +32,16 @@ class BiolekMemcapacitor(Memcapacitive):
         IC: initial charge (C)\n
         window_type: type of window function ('joglekar' or 'biolek')
         """
+        if variability_cv > 0:
+            rng = rng or np.random.default_rng()
+            Cmin = rng.lognormal(mean=np.log(Cmin), sigma=variability_cv)
+            Cmax = rng.lognormal(mean=np.log(Cmax), sigma=variability_cv)
+            if not (Cmin < Cinit < Cmax):
+                #unrealistic variability draw, reject and raise error
+                raise ValueError(
+                    f"variability draw broke Cmin < Cinit < Cmax invariant: "
+                    f"Cmin={Cmin:.3e}, Cinit={Cinit:.3e}, Cmax={Cmax:.3e}"
+                )
         self.Cmin = Cmin
         self.Cmax = Cmax
         self.Cinit = Cinit
@@ -38,6 +56,7 @@ class BiolekMemcapacitor(Memcapacitive):
         self.x = self.x_init
         self.q = self.q_init
         self.i = 0.0
+        
 
     # -------------------------
     def DM(self, x):
