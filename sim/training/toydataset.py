@@ -1,42 +1,37 @@
 import numpy as np
+from torchvision import datasets, transforms
+from PIL import Image
 
-def make_vertical(col):
-    img = np.zeros((4, 4))
-    img[:, col] = 1
-    return img.flatten()
+DIGITS = [0, 1, 2, 3]
+IMG_SIZE = 8  # downsampled from native 28x28
 
-def make_horizontal(row):
-    img = np.zeros((4, 4))
-    img[row, :] = 1
-    return img.flatten()
+def _load_and_downsample(train=True, max_per_class=None):
+    mnist = datasets.MNIST(root="./mnist_data", train=train, download=True)
 
-def make_diagonal():
-    return np.eye(4).flatten()
+    images = []
+    labels = []
+    class_counts = {d: 0 for d in DIGITS}
 
-def make_x():
-    img = np.eye(4) + np.fliplr(np.eye(4))
-    img = (img > 0).astype(float)
-    return img.flatten()
+    for img, label in mnist:
+        if label not in DIGITS:
+            continue
+        if max_per_class is not None and class_counts[label] >= max_per_class:
+            continue
 
-rng = np.random.default_rng(0)
+        img_small = img.resize((IMG_SIZE, IMG_SIZE), Image.LANCZOS)
+        arr = np.asarray(img_small, dtype=np.float64) / 255.0  # normalize to [0,1]
+        images.append(arr.flatten())
+        labels.append(DIGITS.index(label))  # remap to 0..3 for CrossEntropyLoss
+        class_counts[label] += 1
 
-def add_noise(img, p=0.1):
-    flip = rng.random(img.shape) < p
-    return np.where(flip, 1 - img, img)
+    X = np.stack(images).astype(np.float64)
+    y = np.array(labels, dtype=np.int64)
+    return X, y
 
-X = []
-y = []
 
-for col in range(4):
-    for _ in range(3):
-        X.append(add_noise(make_vertical(col))); y.append(0)
-for row in range(4):
-    for _ in range(3):
-        X.append(add_noise(make_horizontal(row))); y.append(1)
-for _ in range(6):
-    X.append(add_noise(make_diagonal())); y.append(2)
-for _ in range(6):
-    X.append(add_noise(make_x())); y.append(3)
+# Cap per-class count to keep this fast for Monte Carlo sweeps and balanced across classes.
+# Raise this once you've confirmed sweep runtime at this size is acceptable.
+X, y = _load_and_downsample(train=True, max_per_class=200)
 
-X = np.array(X, dtype=np.float32)
-y = np.array(y, dtype=np.int64)
+print(f"Loaded {len(X)} samples, {IMG_SIZE}x{IMG_SIZE} = {IMG_SIZE*IMG_SIZE} features, "
+      f"{len(DIGITS)} classes, {[np.sum(y==i) for i in range(len(DIGITS))]} per class")

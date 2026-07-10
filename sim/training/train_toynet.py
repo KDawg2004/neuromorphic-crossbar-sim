@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from sim.training.toydataset import X, y
@@ -5,12 +6,12 @@ from sim.training.toydataset import X, y
 class ToyNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc = nn.Linear(16, 4, bias=False)
+        self.fc = nn.Linear(64, 4, bias=False)
 
     def forward(self, x):
         return self.fc(x)
 
-X_train = torch.from_numpy(X)
+X_train = torch.from_numpy(X).float()
 y_train = torch.from_numpy(y)
 
 model = ToyNet()
@@ -34,6 +35,5 @@ print("Final train accuracy:", accuracy.item())
 W = model.fc.weight.detach().numpy().T  # transpose to (in, out) for crossbar convention
 print("Weight matrix shape:", W.shape)
 
-import numpy as np
 np.save("sim/training/trained_weights.npy", W)
 print("Saved to sim/training/trained_weights.npy")
