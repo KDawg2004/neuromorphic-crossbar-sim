@@ -27,7 +27,7 @@ raw_outputs = []
 nan_or_inf_count = 0
 
 for i in range(len(X)):
-    programmer.map_weights(cb, W)
+    programmer.map_weights(cb, W)  # reset devices to clean mapped state before each sample
     out = network.forward(X[i], dt)
 
     if not np.all(np.isfinite(out)):

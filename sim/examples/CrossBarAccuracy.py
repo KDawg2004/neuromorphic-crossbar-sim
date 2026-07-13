@@ -31,7 +31,7 @@ for row in range(cb.rows):
         )
 
 programmer = CrossbarProgrammer()
-programmer.map_weights(cb, W)
+programmer.map_weights(cb, W)  # clip to 99th percentile to avoid outlier rows dominating
 
 layer = CrossbarLayer(cb)
 network = NeuralNetwork()

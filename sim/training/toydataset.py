@@ -3,7 +3,7 @@ from torchvision import datasets, transforms
 from PIL import Image
 
 DIGITS = [0, 1, 2, 3]
-IMG_SIZE = 8  # downsampled from native 28x28
+IMG_SIZE = 8  # downsampled from 28x28
 
 def _load_and_downsample(train=True, max_per_class=None):
     mnist = datasets.MNIST(root="./mnist_data", train=train, download=True)

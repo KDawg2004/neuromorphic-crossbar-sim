@@ -5,13 +5,18 @@ class CrossbarProgrammer:
     def __init__(self):
         pass  # no stored G_on/G_off
 
-    def map_weights(self, crossbar, weights):
+    def map_weights(self, crossbar, weights, clip_percentile=None):
         rows, cols = weights.shape
 
         if crossbar.rows != rows or crossbar.cols != cols * 2:
             raise ValueError(...)
 
-        w_max = np.abs(weights).max()
+        w = weights
+        if clip_percentile is not None:
+            clip_value = np.percentile(np.abs(weights), clip_percentile)
+            w = np.clip(weights, -clip_value, clip_value)
+
+        w_max = np.abs(w).max()
         if w_max == 0:
             w_max = 1.0
 
