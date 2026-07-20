@@ -11,7 +11,8 @@ W = np.load("sim/training/trained_weights.npy")
 in_features, out_features = W.shape
 
 # 50/50 split: half the output columns TEAM, half Biolek
-device_types = ["team" if c % 2 == 0 else "biolek" for c in range(out_features)]
+#device_types = ["team" if c % 2 == 0 else "biolek" for c in range(out_features)]
+device_types = ["team", "team", "team", "biolek"]
 print("device_types:", device_types)
 
 cb = build_crossbar(in_features, out_features, R_row=0.0, R_col=0.0, device_types=device_types)

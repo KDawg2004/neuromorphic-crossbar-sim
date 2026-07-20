@@ -12,9 +12,9 @@ W = np.load("sim/training/trained_weights.npy")
 in_features, out_features = W.shape
 
 # --- Sweep configuration ---
-CV_VALUES = [0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30]
-N_TRIALS = 50
-DEVICE_TYPES = ["team", "biolek", "team", "biolek"]  # fixed mixed architecture under test
+CV_VALUES = [0.0, 0.05, 0.10, 0.15, 0.20]
+N_TRIALS = 25
+DEVICE_TYPES = ["team", "biolek", "team", "team"]  # fixed mixed architecture under test
 R_ROW = 0.0
 R_COL = 0.0
 

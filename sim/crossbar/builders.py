@@ -10,17 +10,17 @@ from sim.crossbar.crossbar import Crossbar
 DEFAULT_VARIABILITY_CV = 0.15
 
 
-def _make_device(kind, rng, variability_cv):
+def _make_device(kind, rng, variability_cv, biolek_params=None):
     if kind == "team":
         return TEAMMemristor(variability_cv=variability_cv, rng=rng)
     elif kind == "biolek":
-        return BiolekMemcapacitor(variability_cv=variability_cv, rng=rng)
+        params = biolek_params or {}
+        return BiolekMemcapacitor(variability_cv=variability_cv, rng=rng, **params)
     else:
-        raise ValueError(f"unknown device type: {kind!r}, expected 'team' or 'biolek'")
-
+        raise ValueError(f"unknown device kind: {kind}")
 
 def build_crossbar(in_features, out_features, R_row=0.0, R_col=0.0,
-                    device_types=None, variability_cv=0.0, seed=None):
+                    device_types=None, variability_cv=0.0, seed=None, biolek_params=None):
     """
     Build a crossbar with differential pairs, optionally mixed device types
     and device-to-device variability.
@@ -46,7 +46,7 @@ def build_crossbar(in_features, out_features, R_row=0.0, R_col=0.0,
     for row in range(cb.rows):
         for out_col in range(out_features):
             kind = device_types[out_col]
-            cb.set_device(row, out_col * 2, _make_device(kind, rng, variability_cv))
-            cb.set_device(row, out_col * 2 + 1, _make_device(kind, rng, variability_cv))
+            cb.set_device(row, out_col * 2, _make_device(kind, rng, variability_cv, biolek_params))
+            cb.set_device(row, out_col * 2 + 1, _make_device(kind, rng, variability_cv, biolek_params))
 
     return cb

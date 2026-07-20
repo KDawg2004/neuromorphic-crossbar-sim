@@ -4,11 +4,11 @@ from math import gamma
 from .memcapacitive import Memcapacitive
 
 BIOLEK_DEFAULTS = dict(
-    Cmin=10e-9,
-    Cmax=10e-6,
+    Cmin=50e-9,
+    Cmax=200e-9,
     Cinit=100e-9,
     k=1e7,
-    p=1,
+    p=10,
 )
 class BiolekMemcapacitor(Memcapacitive):
     """

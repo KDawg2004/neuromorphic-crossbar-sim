@@ -1,3 +1,7 @@
+#Author: Kaevin Barta
+
+import numpy as np
+
 """
 crossbar.py
 
@@ -8,8 +12,6 @@ basic infrastructure for applying row inputs and collecting column
 currents. Circuit solving and parasitic resistance will be added
 in future revisions.
 """
-
-import numpy as np
 
 
 class Crossbar:
@@ -142,10 +144,11 @@ class Crossbar:
         Row-rail is driven by row_inputs at col=0, chained rightward by R_row.
         Column-rail is grounded at the bottom row, chained upward by R_col.
         """
+        #Node layout
         n_cells = self.rows * self.cols
         n_nodes = 2 * n_cells
-        A = np.zeros((n_nodes, n_nodes))
-        b = np.zeros(n_nodes)
+        A = np.zeros((n_nodes, n_nodes)) 
+        b = np.zeros(n_nodes) 
 
         def row_node(r, c):
             return r * self.cols + c
@@ -153,9 +156,11 @@ class Crossbar:
         def col_node(r, c):
             return n_cells + r * self.cols + c
 
+        #Wire conductances
         g_wire = 1.0 / self.R_row if self.R_row > 0.0 else None
         g_col = 1.0 / self.R_col if self.R_col > 0.0 else None
 
+        #Loop over the crosspoints
         for row in range(self.rows):
             for col in range(self.cols):
 
@@ -189,12 +194,12 @@ class Crossbar:
                         A[nr, nr] -= g_wire
                         A[nr, row_node(row, col + 1)] += g_wire
                 else:
-                    # zero row resistance: row-rail node is forced to source voltage
+                    #zero row resistance -> row rail node is forced to source voltage
                     A[nr, :] = 0.0
                     A[nr, nr] = 1.0
                     b[nr] = self.row_inputs[row]
 
-                # Column-rail wire chain
+                #Column rail wire chain, same thing as above but vertical
                 if g_col is not None:
                     if row > 0:
                         A[nc, nc] -= g_col
@@ -204,10 +209,10 @@ class Crossbar:
                         A[nc, nc] -= g_col
                         A[nc, col_node(row + 1, col)] += g_col
                     else:
-                        # bottom row: column-rail grounded through R_col
+                        # bottom row: column rail grounded through R_col
                         A[nc, nc] -= g_col
                 else:
-                    # zero column resistance: column-rail node forced to ground
+                    # zero column resistance: column rail node forced to ground
                     A[nc, :] = 0.0
                     A[nc, nc] = 1.0
                     b[nc] = 0.0
