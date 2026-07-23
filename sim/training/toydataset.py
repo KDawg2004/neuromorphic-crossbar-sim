@@ -19,7 +19,7 @@ def _load_and_downsample(train=True, max_per_class=None):
             continue
 
         img_small = img.resize((IMG_SIZE, IMG_SIZE), Image.LANCZOS)
-        arr = np.asarray(img_small, dtype=np.float64) / 255.0  # normalize to [0,1]
+        arr = np.asarray(img_small, dtype=np.float64) / 255.0  # normalize rgb to [0,1]
         images.append(arr.flatten())
         labels.append(DIGITS.index(label))  # remap to 0..3 for CrossEntropyLoss
         class_counts[label] += 1
@@ -35,3 +35,4 @@ X, y = _load_and_downsample(train=True, max_per_class=200)
 
 print(f"Loaded {len(X)} samples, {IMG_SIZE}x{IMG_SIZE} = {IMG_SIZE*IMG_SIZE} features, "
       f"{len(DIGITS)} classes, {[np.sum(y==i) for i in range(len(DIGITS))]} per class")
+

@@ -14,21 +14,29 @@ in_features, out_features = W.shape
 # --- Sweep configuration ---
 CV_VALUES = [0.0, 0.05, 0.10, 0.15, 0.20]
 N_TRIALS = 25
-DEVICE_TYPES = ["team", "biolek", "team", "team"]  # fixed mixed architecture under test
+DEVICE_TYPES = ["team", "biolek", "team", "biolek"]  # fixed mixed architecture under test
 R_ROW = 0.0
 R_COL = 0.0
 
 
-def run_single_trial(cv, seed):
+def run_single_trial(cv, seed, max_retries=5):
     """Build one crossbar at the given variability level and seed, run inference,
-    return accuracy for this single trial."""
-    cb = build_crossbar(
-        in_features, out_features,
-        R_row=R_ROW, R_col=R_COL,
-        device_types=DEVICE_TYPES,
-        variability_cv=cv,
-        seed=seed,
-    )
+    return accuracy for this single trial, or None if all retries were rejected."""
+    rejected = 0
+    for attempt in range(max_retries):
+        try:
+            cb = build_crossbar(
+                in_features, out_features,
+                R_row=R_ROW, R_col=R_COL,
+                device_types=DEVICE_TYPES,
+                variability_cv=cv,
+                seed=seed + attempt * 999983,
+            )
+            break
+        except ValueError:
+            rejected += 1
+    else:
+        return None, rejected
 
     programmer = CrossbarProgrammer()
     layer = CrossbarLayer(cb)
@@ -48,7 +56,7 @@ def run_single_trial(cv, seed):
         if pred == y[i]:
             correct += 1
 
-    return correct / len(X)
+    return correct / len(X), rejected
 
 
 def run_sweep():
@@ -56,18 +64,27 @@ def run_sweep():
 
     for cv in CV_VALUES:
         accuracies = []
+        total_rejected = 0
         for trial in range(N_TRIALS):
-            # seed derived from cv and trial index so the whole sweep is reproducible
-            # from CV_VALUES/N_TRIALS alone, no external seed state needed
-            seed = hash((cv, trial)) % (2**32)
-            acc = run_single_trial(cv, seed)
-            accuracies.append(acc)
+            # deterministic seed, stable across processes -- do NOT use
+            # Python's hash() on a tuple here, it's per-process salted
+            # and not reproducible run-to-run (see project notes)
+            seed = int(cv * 1000) * 1000 + trial
+            acc, rejected = run_single_trial(cv, seed)
+            total_rejected += rejected
+            if acc is not None:
+                accuracies.append(acc)
+
+        if not accuracies:
+            print(f"cv={cv:.2f}: ALL TRIALS REJECTED, skipping")
+            continue
 
         results[cv] = accuracies
         mean = np.mean(accuracies)
         std = np.std(accuracies)
         print(f"cv={cv:.2f}: mean={mean:.4f}, std={std:.4f}, "
-              f"min={min(accuracies):.4f}, max={max(accuracies):.4f}")
+              f"min={min(accuracies):.4f}, max={max(accuracies):.4f}, "
+              f"n={len(accuracies)}/{N_TRIALS}, rejected_draws={total_rejected}")
 
     return results
 

@@ -70,27 +70,9 @@ class Crossbar:
 
         self.row_inputs = np.asarray(inputs)
 
-    def _compute_column_currents_IDEAL_WIRE(self):
-        """
-        Sum currents from every device in each column.
-        """
+    def compute_column_currents(self, dt):
+        return self.compute_column_currents_mna(dt)
 
-        currents = np.zeros(self.cols)
-
-        for row in range(self.rows):
-            for col in range(self.cols):
-
-                device = self.devices[row][col]
-
-                if device is None:
-                    continue
-
-                v = self.row_inputs[row]
-
-                currents[col] += device.network_current(v)
-
-        return currents
-    
     def forward_step(self, dt):
         """
         Solve node voltages once, compute column currents and advance
@@ -99,17 +81,6 @@ class Crossbar:
         the same dt on the same inputs.
         Returns: (cols,) array of column currents.
         """
-        if self.R_row == 0.0 and self.R_col == 0.0:
-            currents = self._compute_column_currents_IDEAL_WIRE()
-            for row in range(self.rows):
-                for col in range(self.cols):
-                    device = self.devices[row][col]
-                    if device is None:
-                        continue
-                    v = self.row_inputs[row]
-                    device.network_step(v, dt)
-            return currents
-
         V_nodes = self.solve_node_voltages(dt)
         n_cells = self.rows * self.cols
         currents = np.zeros(self.cols)
@@ -249,12 +220,72 @@ class Crossbar:
                 currents[col] += G * v_device + I_eq
 
         return currents
-    
-    def compute_column_currents(self, dt):
-        if self.R_row == 0.0 and self.R_col == 0.0:
-            return self._compute_column_currents_IDEAL_WIRE()
-        else:
-            return self.compute_column_currents_mna(dt)
+        
+
+    def solve_node_voltages_decoupled(self, dt):
+        """'No sneak path' limit: each device treated as its own isolated
+        2-node circuit (source -> R_row -> device -> R_col -> ground), with
+        NO coupling to neighboring devices' rails. This removes exactly the
+        terms that create sneak paths in solve_node_voltages (the row-rail
+        chain to (col-1)/(col+1) and column-rail chain to (row-1)/(row+1)),
+        while keeping the same device companion model and the same R_row/R_col
+        series-loss physics. Returns per-column currents, same shape as
+        forward_step's coupled-solve branch.
+
+        Use this ONLY for comparison against forward_step at matched R values,
+        dt, and device states -- see sneakComparison.py. Calling this on the
+        same device objects used by a real forward_step call, in sequence,
+        will corrupt device state via read disturb (see map_weights note in
+        enduranceSweep.py) -- build a fresh, separately-programmed crossbar
+        for each of the two solves being compared, do not reuse one crossbar
+        for both.
+        """
+        g_wire = 1.0 / self.R_row if self.R_row > 0.0 else None
+        g_col = 1.0 / self.R_col if self.R_col > 0.0 else None
+
+        currents = np.zeros(self.cols)
+
+        for row in range(self.rows):
+            V_source = self.row_inputs[row]
+            for col in range(self.cols):
+                device = self.devices[row][col]
+                if device is None:
+                    continue
+
+                G = device.current_conductance(dt)
+                I_eq = device.current_offset(dt)
+
+                if g_wire is not None and g_col is not None:
+                    #Row: -(G+g_wire)*V_nr + G*V_nc = -I_eq - g_wire*V_source
+                    #Col: G*V_nr - (G+g_col)*V_nc = I_eq
+                    A = np.array([
+                        [-(G + g_wire), G],
+                        [G, -(G + g_col)],
+                    ])
+                    b = np.array([-I_eq - g_wire * V_source, I_eq])
+                    V_nr, V_nc = np.linalg.solve(A, b)
+
+                elif g_wire is None and g_col is not None:
+                    # R_row=0: row node forced to source directly
+                    V_nr = V_source
+                    V_nc = (G * V_source - I_eq) / (G + g_col)
+
+                elif g_wire is not None and g_col is None:
+                    # R_col=0: column node forced to ground directly
+                    V_nc = 0.0
+                    V_nr = (I_eq + g_wire * V_source) / (G + g_wire)
+
+                else:
+                    # both zero: identical to ideal-wire case
+                    V_nr = V_source
+                    V_nc = 0.0
+
+                v_device = V_nr - V_nc
+                currents[col] += G * v_device + I_eq
+
+                device.network_step(v_device, dt)
+
+        return currents
         
     
     def step(self, dt):
