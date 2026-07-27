@@ -1,6 +1,9 @@
 #Author: Kaevin Barta
 
 import numpy as np
+from scipy.sparse import lil_matrix
+from scipy.sparse.linalg import spsolve
+
 
 """
 crossbar.py
@@ -103,7 +106,7 @@ class Crossbar:
 
         return currents
     
-    def solve_node_voltages(self, dt):
+    def solve_node_voltages_REF(self, dt):
         """
         Build and solve MNA system for node voltages under row and column wire resistance.
 
@@ -189,6 +192,86 @@ class Crossbar:
                     b[nc] = 0.0
 
         return np.linalg.solve(A, b)
+    
+    
+    def solve_node_voltages(self, dt):
+        #Node layout
+        n_cells = self.rows * self.cols
+        n_nodes = 2 * n_cells
+        A = lil_matrix((n_nodes, n_nodes))
+        b = np.zeros(n_nodes)
+
+        def row_node(r, c):
+            return r * self.cols + c
+
+        def col_node(r, c):
+            return n_cells + r * self.cols + c
+
+        #Wire conductances
+        g_wire = 1.0 / self.R_row if self.R_row > 0.0 else None
+        g_col = 1.0 / self.R_col if self.R_col > 0.0 else None
+
+        #Loop over the crosspoints
+        for row in range(self.rows):
+            for col in range(self.cols):
+
+                nr = row_node(row, col)
+                nc = col_node(row, col)
+                device = self.devices[row][col]
+
+                # Device companion model, current flows row-rail -> column-rail
+                if device is not None:
+                    G = device.current_conductance(dt)
+                    I_eq = device.current_offset(dt)
+
+                    A[nr, nr] -= G
+                    A[nr, nc] += G
+                    b[nr] -= I_eq
+
+                    A[nc, nc] -= G
+                    A[nc, nr] += G
+                    b[nc] += I_eq
+
+                # Row-rail wire chain
+                if g_wire is not None:
+                    if col == 0:
+                        A[nr, nr] -= g_wire
+                        b[nr] -= g_wire * self.row_inputs[row]
+                    else:
+                        A[nr, nr] -= g_wire
+                        A[nr, row_node(row, col - 1)] += g_wire
+
+                    if col < self.cols - 1:
+                        A[nr, nr] -= g_wire
+                        A[nr, row_node(row, col + 1)] += g_wire
+                else:
+                    #zero row resistance -> row rail node is forced to source voltage
+                    A.rows[nr] = []
+                    A.data[nr] = []
+                    A[nr, nr] = 1.0
+                    b[nr] = self.row_inputs[row]
+
+                #Column rail wire chain, same thing as above but vertical
+                if g_col is not None:
+                    if row > 0:
+                        A[nc, nc] -= g_col
+                        A[nc, col_node(row - 1, col)] += g_col
+
+                    if row < self.rows - 1:
+                        A[nc, nc] -= g_col
+                        A[nc, col_node(row + 1, col)] += g_col
+                    else:
+                        # bottom row: column rail grounded through R_col
+                        A[nc, nc] -= g_col
+                else:
+                    # zero column resistance: column rail node forced to ground
+                    A.rows[nc] = []
+                    A.data[nc] = []
+                    A[nc, nc] = 1.0
+                    b[nc] = 0.0
+
+        A_csr = A.tocsr()
+        return spsolve(A_csr, b)
 
     def compute_column_currents_mna(self, dt):
         """
