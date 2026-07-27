@@ -32,6 +32,8 @@ class CrossbarProgrammer:
                 device_plus.program(state_plus)
                 device_minus.program(state_minus)
 
+        return w_max  #return diagnostics 
+
     def _encode_differential(self, w_norm):
         mag = abs(w_norm)
 
