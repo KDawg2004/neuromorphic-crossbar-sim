@@ -27,6 +27,64 @@ def relu(x):
     return np.maximum(x, 0.0)
 
 
+def calibrate_activation_scales(W1, in1, out1, device_types_l1, dt, n_samples=20):
+    """Calibrate a SEPARATE PGA gain per output-column device type.
+
+    TEAM (roughly linear conductance) and Biolek (steep 1/DM(x) response)
+    produce systematically different raw current magnitudes for
+    functionally equivalent programmed weights -- confirmed directly by
+    comparing crossbar vs PyTorch layer-1 output per neuron: TEAM-driven
+    neurons matched PyTorch closely under a single global scale, Biolek-
+    driven neurons were attenuated by roughly 3x relative to what a single
+    scalar could correct (see project notes). A single global PGA gain is
+    therefore a poor compromise across both populations. This computes one
+    gain per device type instead, applied per-column by column device type
+    at forward-pass time.
+
+    Still a per-device-type CONSTANT calibrated once at nominal (cv=0, R=0)
+    conditions -- same fixed-gain-hardware justification as before, just
+    two gains instead of one. Does not adapt to variability/endurance.
+    """
+    import torch
+    import torch.nn as nn
+
+    cb_cal = build_crossbar(
+        in1, out1, R_row=0.0, R_col=0.0,
+        device_types=device_types_l1, variability_cv=0.0, seed=0,
+    )
+    programmer = CrossbarProgrammer()
+    layer_cal = CrossbarLayer(cb_cal)
+    programmer.map_weights(cb_cal, W1)
+
+    fc1 = nn.Linear(in1, out1, bias=False)
+    with torch.no_grad():
+        fc1.weight.copy_(torch.from_numpy(W1.T).float())
+
+    crossbar_vals, torch_vals = [], []
+    for i in range(n_samples):
+        crossbar_vals.append(layer_cal.forward(X[i], dt))
+        torch_vals.append(fc1(torch.from_numpy(X[i]).float()).detach().numpy())
+
+    crossbar_vals = np.abs(np.array(crossbar_vals))  # (n_samples, out1)
+    torch_vals = np.abs(np.array(torch_vals))
+
+    scales = np.zeros(out1)
+    for col in range(out1):
+        mask = crossbar_vals[:, col] > 1e-9
+        if not np.any(mask):
+            scales[col] = 1.0  # degenerate fallback, shouldn't normally hit this
+            continue
+        scales[col] = np.median(torch_vals[mask, col] / crossbar_vals[mask, col])
+
+    team_cols = [c for c in range(out1) if device_types_l1[c] == "team"]
+    biolek_cols = [c for c in range(out1) if device_types_l1[c] == "biolek"]
+    print(f"TEAM columns {team_cols}: scale = {scales[team_cols].mean():.2f}")
+    print(f"Biolek columns {biolek_cols}: scale = {scales[biolek_cols].mean():.2f}")
+
+    return scales  # per-column array, length out1
+
+ACTIVATION_SCALES = calibrate_activation_scales(W1, in1, out1, DEVICE_TYPES_L1, dt)
+
 def run_single_trial(cv, seed, target_layer, max_retries=5):
     cv_l1 = cv if target_layer == "layer1" else 0.0
     cv_l2 = cv if target_layer == "layer2" else 0.0
@@ -60,7 +118,8 @@ def run_single_trial(cv, seed, target_layer, max_retries=5):
         programmer.map_weights(cb2, W2)
 
         x1 = layer1.forward(X[i], dt)
-        x1_relu = relu(x1)
+        x1_rescaled = x1 * ACTIVATION_SCALES
+        x1_relu = relu(x1_rescaled)
         out = layer2.forward(x1_relu, dt)
 
         if not np.all(np.isfinite(out)):

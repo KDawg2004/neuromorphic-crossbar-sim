@@ -193,6 +193,20 @@ class Crossbar:
 
         return np.linalg.solve(A, b)
     
+    def reset_states(self):
+        """
+        Reset all stateful devices back to their programmed initial state.
+        TEAM devices ignore this.
+        """
+        for row in range(self.rows):
+            for col in range(self.cols):
+                device = self.devices[row][col]
+                if device is None:
+                    continue
+
+                if hasattr(device, "reset"):
+                    device.reset()
+    
     
     def solve_node_voltages(self, dt):
         #Node layout

@@ -3,6 +3,9 @@ import numpy as np
 from math import gamma
 from .memcapacitive import Memcapacitive
 
+# NOTE: if Cmin/Cmax here change, BiolekMemcapacitor.program()'s hardcoded
+# G_min/G_max anchors (measured at dt=1e-4) must be re-measured and updated
+# to match, they are not derived automatically from these values.
 BIOLEK_DEFAULTS = dict(
     Cmin=50e-9,
     Cmax=200e-9,
@@ -299,6 +302,27 @@ class BiolekMemcapacitor(Memcapacitive):
         return (q_new - self.q) / dt
     
     def program(self, state):
+        """Program device to a target capacitance C(x) linear in `state`,
+        matching the real physical write-verify process (pulse voltage,
+        measure C, repeat until target C is hit). Capacitance, not
+        discretized companion-model conductance, is the physically
+        controlled/measured quantity for a ferroelectric memcapacitor -- AC
+        current/charge transfer scale linearly with C, not with elastance or
+        with the backward-Euler-discretized G=C/dt used internally by the
+        MNA solver. dt is deliberately NOT used here; the solver computes
+        current_conductance(dt) fresh from x at whatever dt it needs, at
+        solve time.
+        """
+        C_target = self.Cmin + state * (self.Cmax - self.Cmin)
+        DM_target = 1.0 / C_target
+        x = (DM_target - 1.0 / self.Cmax) / (1.0 / self.Cmin - 1.0 / self.Cmax)
+
+        self.x = np.clip(x, 0.0, 1.0)
+        self.x_init = self.x
+        
+    '''
+    def program(self, state):
         state = np.clip(state, 0.0, 1.0)
         self.x = 1.0 - state
         self.x_init = self.x
+    '''

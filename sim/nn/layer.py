@@ -16,6 +16,7 @@ class CrossbarLayer:
 
         y_raw = self.crossbar.forward_step(dt)
 
+
         if len(y_raw) % 2 != 0:
             raise RuntimeError(
                 f"Crossbar column count {len(y_raw)} is not even, cannot pair for differential readout."
@@ -24,5 +25,5 @@ class CrossbarLayer:
         i_plus = y_raw[0::2]
         i_minus = y_raw[1::2]
         y = i_plus - i_minus
-
+        
         return y
