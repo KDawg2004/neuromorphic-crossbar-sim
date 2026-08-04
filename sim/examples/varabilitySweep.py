@@ -12,11 +12,12 @@ W = np.load("sim/training/trained_weights.npy")
 in_features, out_features = W.shape
 
 # --- Sweep configuration ---
-CV_VALUES = [0.0, 0.05, 0.10, 0.15, 0.20]
+CV_VALUES = [0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50]
 N_TRIALS = 25
 DEVICE_TYPES = ["team", "biolek", "team", "biolek"]  # fixed mixed architecture under test
 R_ROW = 0.0
 R_COL = 0.0
+OUT_PATH = "sim/training/variability_sweep_results.json"
 
 
 def run_single_trial(cv, seed, max_retries=5):
@@ -59,10 +60,31 @@ def run_single_trial(cv, seed, max_retries=5):
     return correct / len(X), rejected
 
 
+def load_existing_results():
+    try:
+        with open(OUT_PATH, "r") as f:
+            raw = json.load(f)
+        # keys were saved as strings, convert back to float for lookup consistency
+        return {float(k): v for k, v in raw.items()}
+    except FileNotFoundError:
+        return {}
+
+
+def save_results(results):
+    with open(OUT_PATH, "w") as f:
+        json.dump({str(cv): accs for cv, accs in results.items()}, f, indent=2)
+
+
 def run_sweep():
-    results = {}  # cv -> list of accuracies, one per trial
+    results = load_existing_results()
+    if results:
+        print(f"Resuming: {len(results)} cell(s) already completed, will skip those.")
 
     for cv in CV_VALUES:
+        if cv in results:
+            print(f"cv={cv:.2f}: already done, skipping")
+            continue
+
         accuracies = []
         total_rejected = 0
         for trial in range(N_TRIALS):
@@ -77,6 +99,8 @@ def run_sweep():
 
         if not accuracies:
             print(f"cv={cv:.2f}: ALL TRIALS REJECTED, skipping")
+            results[cv] = []
+            save_results(results)
             continue
 
         results[cv] = accuracies
@@ -86,14 +110,11 @@ def run_sweep():
               f"min={min(accuracies):.4f}, max={max(accuracies):.4f}, "
               f"n={len(accuracies)}/{N_TRIALS}, rejected_draws={total_rejected}")
 
+        save_results(results)  # save after every cv, not just at the end
+
     return results
 
 
 if __name__ == "__main__":
     results = run_sweep()
-
-    # save raw results for later plotting / re-analysis, not just the printed summary
-    out_path = "sim/training/variability_sweep_results.json"
-    with open(out_path, "w") as f:
-        json.dump({str(cv): accs for cv, accs in results.items()}, f, indent=2)
-    print(f"\nSaved raw results to {out_path}")
+    print(f"\nDone. Saved raw results to {OUT_PATH}")

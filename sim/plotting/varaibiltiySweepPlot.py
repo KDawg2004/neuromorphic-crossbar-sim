@@ -66,7 +66,7 @@ def main():
     )
 
     # Show the full accuracy range instead of zooming in
-    ax.set_ylim(0.20, 1.00)
+    ax.set_ylim(0.25, 1.00)
 
     ax.grid(alpha=0.3)
     ax.legend()
