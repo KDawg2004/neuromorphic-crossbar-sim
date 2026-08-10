@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
+plt.rcParams.update({
+    "font.size": 14,
+    "axes.titlesize": 17,
+    "axes.labelsize": 14,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+})
+
 def main():
     root = Path(__file__).resolve().parents[2]
     results_file = root / "sim" / "training" / "variability_sweep_results.json"

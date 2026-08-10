@@ -51,7 +51,7 @@ def main():
 
     ax1.set_xlabel("Row/column parasitic resistance R (\u03a9)")
     ax1.set_ylabel("Inference accuracy")
-    ax1.set_title("Coupled vs. decoupled accuracy\n(shaded = min-max range, n=25/point)")
+    ax1.set_title("Coupled vs. decoupled accuracy\n(shaded = min-max range, n=25/point)", fontsize=16)
     ax1.set_ylim(0, 1)
     ax1.grid(alpha=0.3)
     ax1.legend(loc="lower left")
@@ -61,14 +61,14 @@ def main():
     ax2.bar([str(int(r)) for r in rs], sneak_cost, color="#7c3aed")
     ax2.set_xlabel("Row/column parasitic resistance R (\u03a9)")
     ax2.set_ylabel("Accuracy attributable to sneak-path coupling")
-    ax2.set_title("Sneak-path cost\n(decoupled accuracy \u2212 coupled accuracy)")
+    ax2.set_title("Sneak-path cost\n(decoupled accuracy \u2212 coupled accuracy)", fontsize=16)
     ax2.set_ylim(0, 0.5)
     ax2.grid(alpha=0.3, axis="y")
 
     for i, v in enumerate(sneak_cost):
         ax2.text(i, v + 0.01, f"{v:.3f}", ha="center")
 
-    fig.suptitle("Sneak-path current isolation: mixed TEAM/Biolek crossbar", fontsize=13)
+    fig.suptitle("Sneak-path current isolation: mixed TEAM/Biolek crossbar", fontsize=22)
     fig.tight_layout()
     fig.savefig(OUT_PATH, dpi=200)
     print(f"Saved plot to {OUT_PATH}")

@@ -20,18 +20,18 @@ _STATE    = '#fb7185'   # rose
 
 def _style_ax(ax, title='', xlabel='', ylabel=''):
     ax.set_facecolor(_PANEL)
-    ax.tick_params(colors=_SUBTEXT, labelsize=8)
-    ax.xaxis.label.set_color(_SUBTEXT)
-    ax.yaxis.label.set_color(_SUBTEXT)
+    ax.tick_params(colors=_TEXT, labelsize=8)
+    ax.xaxis.label.set_color(_TEXT)
+    ax.yaxis.label.set_color(_TEXT)
     for spine in ax.spines.values():
-        spine.set_edgecolor(_BORDER)
+        spine.set_edgecolor(_TEXT)
     ax.grid(True, color=_BORDER, linewidth=0.5, linestyle='--', alpha=0.6)
     if title:
-        ax.set_title(title, color=_TEXT, fontsize=9, fontweight='bold', pad=6)
+        ax.set_title(title, color=_TEXT, fontsize=16, fontweight='bold', pad=6)
     if xlabel:
-        ax.set_xlabel(xlabel, fontsize=8)
+        ax.set_xlabel(xlabel, fontsize=8, color=_TEXT)
     if ylabel:
-        ax.set_ylabel(ylabel, fontsize=8)
+        ax.set_ylabel(ylabel, fontsize=8, color=_TEXT)
 
 
 def plot(model, t_end=2.0, freq=1.0, amp=1.5, voltage_fn=None):
@@ -58,7 +58,7 @@ def plot(model, t_end=2.0, freq=1.0, amp=1.5, voltage_fn=None):
     fig = plt.figure(figsize=(12, 9), facecolor=_BG)
     fig.suptitle(
         'TEAM Memristor',
-        color=_TEXT, fontsize=15, fontweight='bold', y=0.97
+        color=_TEXT, fontsize=22, fontweight='bold', y=0.97
     )
 
     gs = gridspec.GridSpec(

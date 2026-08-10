@@ -2,6 +2,15 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({
+    "font.size": 14,
+    "axes.titlesize": 16,
+    "axes.labelsize": 14,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+})
+
 RESULTS_PATH = "sim/training/parasitic_variability_grid_results.json"
 OUT_PATH = "sim/plotting/parasitic_variability_grid.png"
 
@@ -43,7 +52,7 @@ def main():
 
     ax.set_xlabel("Device-to-device variability (CV)")
     ax.set_ylabel("Inference accuracy")
-    ax.set_title("Mixed-device crossbar accuracy vs. variability and parasitic resistance\n"
+    ax.set_title("Mixed crossbar accuracy vs. variability & parasitic resistance\n"
                   "(lines = mean across trials, shaded band = min-max range, n=25 per point)")
     ax.axhline(0.25, color="gray", linestyle="--", linewidth=1, label="chance (4-class)")
     ax.legend(title="Row/column resistance", loc="upper right")

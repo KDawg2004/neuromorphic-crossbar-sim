@@ -161,8 +161,7 @@ def plot_validation_suiteV0(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1
     ax6.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
  
     fig.suptitle('Fractional-Order Biolek Memcapacitor — Validation Suite',
-                 color='white', fontsize=13, fontweight='bold', y=0.99)
- 
+                 color='white', fontsize=18, fontweight='bold', y=0.99)
     plt.show()
 
 def plot_validation_suite(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1000):
@@ -292,6 +291,6 @@ def plot_validation_suite(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=100
     ax6.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
 
     fig.suptitle('Fractional-Order Biolek Memcapacitor — Validation Suite',
-                 color='white', fontsize=13, fontweight='bold', y=0.99)
+                 color='white', fontsize=18, fontweight='bold', y=0.99)
 
     plt.show()

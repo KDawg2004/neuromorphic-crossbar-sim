@@ -53,9 +53,14 @@ def plot_validation_suiteV0(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1
     sims = {a: model.simulate(t_end=t_end, freq=freq, Q_amp=Q_amp,
                               alpha=a, n_points=n_points) for a in alphas}
  
-    fig = plt.figure(figsize=(18, 10))
+    fig = plt.figure(figsize=(18, 5.8))
     fig.patch.set_facecolor('#0f0f1a')
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.5, wspace=0.38)
+    gs = gridspec.GridSpec(
+        1, 3,
+        figure=fig,
+        wspace=0.65   # was 0.55
+    )
+    fig.subplots_adjust(left=0.05, right=0.98, bottom=0.16, top=0.90, wspace=0.70)
  
     def style(ax):
         ax.set_facecolor('#1a1a2e')
@@ -69,18 +74,38 @@ def plot_validation_suiteV0(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1
         ax.set_title(title, color='white', fontsize=10)
  
     # ── 1: x(t) and C(t) dual-axis ──
-    ax1  = fig.add_subplot(gs[0, 0])
+    ax1 = fig.add_subplot(gs[0, 0])
     ax1b = ax1.twinx()
+
     style(ax1)
+    style(ax1b)
+
+    # Move the secondary axis farther to the right
+    ax1b.spines["right"].set_position(("axes", 1.10))
+
     for a, col in zip(alphas, colors):
         t, q, x, v, i = sims[a]
-        ax1.plot(t, np.clip(x, 0, 1), color=col, lw=1.6, label=f'α={a}')
-        ax1b.plot(t, model.C(x) * 1e9, color=col, lw=1.0, ls='--', alpha=0.45)
-    ax1b.set_ylabel('C (nF)', color='#aaa')
+        ax1.plot(t, np.clip(x, 0, 1),
+                color=col, lw=1.6, label=f'α={a}')
+        ax1b.plot(t, model.C(x) * 1e9,
+                color=col, lw=1.0, ls='--', alpha=0.45)
+
+    ax1.set_ylabel('state x', color='white')
+
+    # Push the label well away from the neighboring subplot
+    ax1b.set_ylabel('C (nF)', color='#aaa', labelpad=22)
+    ax1b.yaxis.set_label_coords(1.20, 0.5)
     ax1b.tick_params(colors='#aaa')
-    label(ax1, 't (s)', 'state x', 'x(t) & C(t)  [solid=x, dashed=C]')
-    ax1.legend(fontsize=7, loc='upper right',
-               facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
+
+    ax1.set_xlabel('t (s)', color='white')
+    ax1.set_title('x(t) & C(t)  [solid=x, dashed=C]',
+                color='white', fontsize=10)
+
+    ax1.legend(fontsize=7,
+            loc='upper right',
+            facecolor='#1a1a2e',
+            labelcolor='white',
+            framealpha=0.6)
  
     # ── 2: pinched hysteresis q-v ──
     ax2 = fig.add_subplot(gs[0, 1])
@@ -92,6 +117,7 @@ def plot_validation_suiteV0(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1
     ax2.axhline(0, color='#555', lw=0.5)
     ax2.axvline(0, color='#555', lw=0.5)
     label(ax2, 'v (V)', 'q (nC)', 'q-v Pinched Hysteresis')
+    ax2.yaxis.set_label_coords(-0.14, 0.5)
     ax2.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
  
     # ── 3: loop area vs alpha sweep ──
@@ -121,47 +147,8 @@ def plot_validation_suiteV0(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=1
     label(ax3, 'α', 'loop area (nC·V)', 'Hysteresis Area vs α')
     ax3.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
  
-    # ── 4: C(t) colored by x at alpha=0.5 ──
-    ax4 = fig.add_subplot(gs[1, 0])
-    style(ax4)
-    t, q, x, v, i = sims[0.50]
-    sc = ax4.scatter(t, model.C(x) * 1e9, c=np.clip(x, 0, 1),
-                     cmap='plasma', s=4, alpha=0.85)
-    cb = plt.colorbar(sc, ax=ax4)
-    cb.set_label('x state', color='white')
-    cb.ax.yaxis.set_tick_params(color='white')
-    plt.setp(cb.ax.yaxis.get_ticklabels(), color='white')
-    label(ax4, 't (s)', 'C (nF)', 'C(t) colored by x  [α=0.5]')
- 
-    # ── 5: frequency sweep at alpha=0.5 ──
-    ax5 = fig.add_subplot(gs[1, 1])
-    style(ax5)
-    freqs   = [0.5, 1.0, 2.0, 5.0]
-    fcolors = plasma(np.linspace(0.15, 0.9, len(freqs)))
-    for f, col in zip(freqs, fcolors):
-        te = 5 / f
-        t2, q2, x2, v2, i2 = model.simulate(t_end=te, freq=f, Q_amp=Q_amp,
-                                              alpha=0.5, n_points=n_points)
-        idx = t2 >= te - 2 / f
-        ax5.plot(v2[idx], q2[idx] * 1e9, color=col, lw=1.6, label=f'{f} Hz')
-    ax5.axhline(0, color='#555', lw=0.5)
-    ax5.axvline(0, color='#555', lw=0.5)
-    label(ax5, 'v (V)', 'q (nC)', 'Freq sweep  [α=0.5]')
-    ax5.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
- 
-    # ── 6: phase portrait x vs q ──
-    ax6 = fig.add_subplot(gs[1, 2])
-    style(ax6)
-    for a, col in zip(alphas, colors):
-        t, q, x, v, i = sims[a]
-        idx = t >= t_end - 2.0
-        ax6.plot(q[idx] * 1e9, np.clip(x[idx], 0, 1),
-                 color=col, lw=1.4, label=f'α={a}')
-    label(ax6, 'q (nC)', 'x (state)', 'Phase portrait: x vs q')
-    ax6.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
- 
     fig.suptitle('Fractional-Order Biolek Memcapacitor — Validation Suite',
-                 color='white', fontsize=13, fontweight='bold', y=0.99)
+                 color='white', fontsize=17, fontweight='bold', y=0.99)
  
     plt.show()
 
@@ -185,7 +172,12 @@ def plot_validation_suite(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=100
 
     fig = plt.figure(figsize=(18, 10))
     fig.patch.set_facecolor('#0f0f1a')
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.5, wspace=0.38)
+    gs = gridspec.GridSpec(
+        2, 3,
+        figure=fig,
+        hspace=0.5,
+        wspace=0.62   # was 0.38
+    )
 
     def style(ax):
         ax.set_facecolor('#1a1a2e')
@@ -252,46 +244,7 @@ def plot_validation_suite(model, t_end=5.0, freq=1.0, Q_amp=100e-9, n_points=100
     label(ax3, 'α', 'loop area (nC·V)', 'Hysteresis Area vs α  [0.1→1.2]')
     ax3.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
 
-    # ── 4: C(t) colored by x at alpha=0.5 ──
-    ax4 = fig.add_subplot(gs[1, 0])
-    style(ax4)
-    t, q, x, v, i = sims[0.50]
-    sc = ax4.scatter(t, model.C(x) * 1e9, c=np.clip(x, 0, 1),
-                     cmap='plasma', s=4, alpha=0.85)
-    cb = plt.colorbar(sc, ax=ax4)
-    cb.set_label('x state', color='white')
-    cb.ax.yaxis.set_tick_params(color='white')
-    plt.setp(cb.ax.yaxis.get_ticklabels(), color='white')
-    label(ax4, 't (s)', 'C (nF)', 'C(t) colored by x  [α=0.5]')
-
-    # ── 5: frequency sweep at alpha=0.5 ──
-    ax5 = fig.add_subplot(gs[1, 1])
-    style(ax5)
-    freqs   = [0.5, 1.0, 2.0, 5.0]
-    fcolors = plasma(np.linspace(0.15, 0.9, len(freqs)))
-    for f, col in zip(freqs, fcolors):
-        te = 5 / f
-        t2, q2, x2, v2, i2 = model.simulate(t_end=te, freq=f, Q_amp=Q_amp,
-                                              alpha=0.5, n_points=n_points)
-        idx = t2 >= te - 2 / f
-        ax5.plot(v2[idx], q2[idx] * 1e9, color=col, lw=1.6, label=f'{f} Hz')
-    ax5.axhline(0, color='#555', lw=0.5)
-    ax5.axvline(0, color='#555', lw=0.5)
-    label(ax5, 'v (V)', 'q (nC)', 'Freq sweep  [α=0.5]')
-    ax5.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
-
-    # ── 6: phase portrait x vs q ──
-    ax6 = fig.add_subplot(gs[1, 2])
-    style(ax6)
-    for a, col in zip(alphas, colors):
-        t, q, x, v, i = sims[a]
-        idx = t >= t_end - 2.0
-        ax6.plot(q[idx] * 1e9, np.clip(x[idx], 0, 1),
-                 color=col, lw=1.4, label=f'α={a}')
-    label(ax6, 'q (nC)', 'x (state)', 'Phase portrait: x vs q')
-    ax6.legend(fontsize=7, facecolor='#1a1a2e', labelcolor='white', framealpha=0.6)
-
-    fig.suptitle('Fractional-Order Biolek Memcapacitor — Validation Suite',
-                 color='white', fontsize=13, fontweight='bold', y=0.99)
+    fig.suptitle('Fractional-Order Biolek Memcapacitor',
+                 color='white', fontsize=18, fontweight='bold', y=0.99)
 
     plt.show()
